@@ -51,9 +51,72 @@
    - GitHub リポジトリ `itoshota2006/note-x-automation` の `note-themes.txt` を取得して開く（`gh api "repos/itoshota2006/note-x-automation/contents/note-themes.txt?ref=main" --jq .content | base64 -d` またはクローン済みリポジトリで `git pull` して読み取り、`/shared/user/.gemini/note-project/note-themes.txt` および `~/note-project/note-themes.txt` と同期する）。
 2. **未執筆テーマの選定:** 行頭に `[済]` がついていない一番上の行（テーマ）を1つ選ぶ。
 3. **Deep Research による一次文献検索:** 選定したテーマについて、Deep Research（または文献検索）で一次文献（英語論文・診療ガイドライン・RCT・システマティックレビュー）を検索する。
-4. **NotebookLM でのノート作成と3点要約:** ブラウザ（または `nlm` CLI）で NotebookLM を開き、新しいノートブックを作成して検索した一次文献データをソースとして貼り付け、**①臨床推論・②評価・③アプローチ** の3点で要約させる。
+4. **NotebookLM でのノート作成と3点要約:** ブラウザ（または `nlm` CLI）で NotebookLM を開き、新しいノートブックを作成して検索した一次文献データをソースとして貼り付け、**①臨床推論・②評価・③アプローチ** の3点で要約させる（※具体的な自動投入コマンド・認証手順は「## 7．NotebookLMへの自動投入手順」に従うこと）。
 5. **記事執筆とローカル保存:** NotebookLM の要約と過去記事のトーン（1〜7年目PT向け、先輩PTが後輩に誠実に解説する文体）および [`past_articles.md`](file:///shared/user/.gemini/note-project/past_articles.md) の重複防止ルールをもとに記事を執筆し、`~/note-project/drafts/`（および `/shared/user/.gemini/note-project/drafts/`）に保存する。
 6. **`note.com` への自動下書き保存:** ブラウザで `https://note.com/notes/new` を開き、タイトル・導入文・目次（`[toc]` を目次ブロックに変換）・本文・生成した図解PNG（`diagram_1.png` 等）を自動入力して右上の **「下書き保存」** を押す（※「公開に進む」「投稿」は絶対禁止）。
 7. **GitHub上の `note-themes.txt` の `[済]` 更新・Push:**
    - `note.com` への下書き保存が成功したら、`note-themes.txt` の該当テーマの行頭に `[済]` をつけて上書き保存し、GitHub リポジトリ（`itoshota2006/note-x-automation`）の `note-themes.txt` に commit & push（または GitHub Contents API `PUT repos/itoshota2006/note-x-automation/contents/note-themes.txt`）して反映させる。
    - 下書き保存に失敗した場合は `[済]` をつけず、ローカルの `~/note-project/drafts/` に `_未投稿.md` で残す。
+
+## 7．NotebookLMへの自動投入手順（Macローカル｜`nlm` CLI・MCP・ブラウザ併用）
+1. **初回セットアップ（Mac環境のみ・1回実施）:**
+   - `notebooklm-mcp-cli`（`nlm` CLI および MCP サーバー）をインストールする。
+     ```bash
+     # uv を使う場合（推奨）
+     uv tool install notebooklm-mcp-cli
+     # pip を使う場合
+     # pip install notebooklm-mcp-cli
+     ```
+   - 初回ログインを実行し、Google アカウントのセッション Cookie を取得する（Chrome 等のブラウザが起動する）。
+     ```bash
+     nlm login --storage protected
+     nlm login --check
+     ```
+   - （任意）AIエージェントと連携する場合は `nlm setup` または `nlm skill install antigravity` で MCP / スキルを登録する。
+2. **投入対象ソースの準備（リポジトリ同期）:**
+   - Mac 上のクローン済みリポジトリ（`note-x-automation`）で `git pull` を実行し、`run_daily_note_draft.py` が生成した一次文献ファイル（`drafts/YYYY-MM-DD_<slug>/sources.md`）または Deep Research で収集した一次文献（論文 PDF・PubMed URL・抄録テキスト）を用意する。
+3. **`nlm` CLI による自動投入・3点要約の手順:**
+   - **Step 1：認証確認とセッション自動更新**（cron / launchd 等の定期実行前に必ず実施）
+     ```bash
+     nlm login --check || nlm auth refresh
+     ```
+   - **Step 2：テーマ別ノートブックの新規作成と ID 取得**
+     ```bash
+     CREATE_OUT=$(nlm notebook create "<YYYY-MM-DD> <テーマ名>")
+     NOTEBOOK_ID=$(echo "$CREATE_OUT" | grep -Eo '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+     # ID抽出できない場合のフォールバック
+     [ -z "$NOTEBOOK_ID" ] && NOTEBOOK_ID=$(nlm notebook list --quiet | head -1)
+     ```
+   - **Step 3：一次文献ソースの自動投入**（必ず `--wait` を付け、連続実行時はレート制限回避のため各コマンド間に 2 秒程度待機する）
+     ```bash
+     # 1) PubMed一次文献まとめ（sources.md）や論文PDFをファイル投入
+     nlm source add "$NOTEBOOK_ID" --file "drafts/<YYYY-MM-DD_slug>/sources.md" --wait
+     sleep 2
+     # 論文PDFを追加する場合
+     # nlm source add "$NOTEBOOK_ID" --file "/path/to/paper.pdf" --wait
+
+     # 2) PubMed URL やガイドラインURLを直接投入する場合
+     # nlm source add "$NOTEBOOK_ID" --url "https://pubmed.ncbi.nlm.nih.gov/<PMID>/" --wait
+
+     # 3) 抄録・本文テキストを直接投入する場合
+     # nlm source add "$NOTEBOOK_ID" --text "<一次文献テキスト>" --title "<ソース名>" --wait
+
+     # 4) （任意）NotebookLM内蔵の Deep Research で一次文献を検索・自動取り込みする場合
+     # nlm research start "<英語検索クエリ（RCT / systematic review / guideline）>" --notebook-id "$NOTEBOOK_ID" --mode deep --auto-import
+     ```
+   - **Step 4：取り込み確認と3点要約の自動抽出**（対話型 REPL の `nlm chat start` は使わず、必ずワンショットの `nlm notebook query` を使用する）
+     ```bash
+     nlm source list "$NOTEBOOK_ID"
+     sleep 2
+     nlm notebook query "$NOTEBOOK_ID" \
+       "投入した一次文献のみを根拠に、①臨床推論・②評価（カットオフ値・MDC/MCID・対象集団）・③アプローチ（負荷設定・再評価指標・限界）の3点で整理してください。ソースに記載がない数値・論文・事実は捏造せず『未確認』と明記してください。" \
+       > "drafts/<YYYY-MM-DD_slug>/notebooklm_summary.md"
+     ```
+4. **MCP ツール／ブラウザへのフォールバック:**
+   - **MCP ツールが利用可能な場合:** `notebook_create` → `source_add`（取り込み完了待機）→ `notebook_query` の順で同一フローを実行する。
+   - **`nlm` 認証が完全に失効した／CLI が使えない場合:** Mac 上で `nlm login` を再実行するか、ブラウザで `https://notebooklm.google.com/` を開き、新規ノートブック作成 →「ソースを追加」から `sources.md` / PDF / PubMed URL を投入して上記と同一プロンプトで3点要約を取得する。
+5. **自動投入時の厳守事項:**
+   - 投入ソースは一次文献（英語原著論文・RCT・システマティックレビュー・診療ガイドライン等）に限定し、出典不明のブログ記事や二次まとめは投入しない。
+   - 認証エラーや取り込み失敗が発生した場合は、独自検索や記憶で根拠を補完せず処理を中断し、エラーを記録して再ログイン後に再実行する。
+   - 既存ノートブックやソースの削除（`nlm notebook delete` / `nlm source delete`）は不可逆のため、自動化スクリプトからは原則実行しない（実行時は必ず事前確認を行う）。
+
