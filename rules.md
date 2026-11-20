@@ -119,4 +119,21 @@
    - 投入ソースは一次文献（英語原著論文・RCT・システマティックレビュー・診療ガイドライン等）に限定し、出典不明のブログ記事や二次まとめは投入しない。
    - 認証エラーや取り込み失敗が発生した場合は、独自検索や記憶で根拠を補完せず処理を中断し、エラーを記録して再ログイン後に再実行する。
    - 既存ノートブックやソースの削除（`nlm notebook delete` / `nlm source delete`）は不可逆のため、自動化スクリプトからは原則実行しない（実行時は必ず事前確認を行う）。
+6. **ワンコマンド実行スクリプト（`scripts/ingest_to_notebooklm.sh`）:**
+   - 上記 Step 1〜4 および記事執筆までを Mac ローカルで一気通貫実行する場合は、`scripts/ingest_to_notebooklm.sh` を使用する。
+     ```bash
+     # 既存ファイル（下書き・sources.md・PDF等）を自動投入して3点要約を生成
+     ./scripts/ingest_to_notebooklm.sh \
+       --theme "<テーマ名>" \
+       --file "drafts/<フォルダ>/<ファイル名>.md"
+
+     # テーマを渡すだけで「Deep Research → NotebookLM自動投入 → 3点要約 → 記事執筆」を一気通貫実行
+     ./scripts/ingest_to_notebooklm.sh \
+       --theme "<テーマ名>" \
+       --deep-research \
+       --draft
+
+     # note-themes.txt の未執筆（最上段）テーマを自動選択して一気通貫実行
+     ./scripts/ingest_to_notebooklm.sh --from-themes --deep-research --draft
+     ```
 

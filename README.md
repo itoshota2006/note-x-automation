@@ -52,3 +52,26 @@
 GitHub の `Actions` タブ → `Daily Note Draft Generator (19:30 JST)` → `Run workflow` から以下を指定して安全にテストできます。
 
 - `dry_run: true` にすると、メール送信・`note-themes.txt` の `[済]` 更新・リポジトリへの Push を行わずに、生成結果を Workflow Artifact として確認できます。
+
+## Macローカルでの NotebookLM 自動投入・一気通貫実行（`scripts/ingest_to_notebooklm.sh`）
+
+Mac 上で `notebooklm-mcp-cli`（`nlm`）の初回ログイン（`nlm login --storage protected`）を済ませた後、以下のワンコマンドで `rules.md` 第7章のワークフローを実行できます。
+
+```bash
+# 1) 既存ファイル（下書き・sources.md・PDF等）を新規ノートブックへ自動投入し3点要約を作成
+./scripts/ingest_to_notebooklm.sh \
+  --theme "TKA術後の屈曲制限" \
+  --file "drafts/tka_flexion_limit/TKA屈曲制限_下書き.md"
+
+# 2) テーマを渡すだけで「Deep Research → NotebookLM自動投入 → 3点要約 → 記事執筆」を一気通貫実行
+./scripts/ingest_to_notebooklm.sh \
+  --theme "大腿骨近位部骨折術後のトレンデレンブルグ歩行に対する中殿筋アプローチの限界と体幹機能評価" \
+  --deep-research \
+  --draft
+
+# 3) note-themes.txt の未執筆（最上段）テーマを自動選択して一気通貫実行
+./scripts/ingest_to_notebooklm.sh --from-themes --deep-research --draft
+```
+
+- 出力物：`notebooklm_summary.md`（①臨床推論・②評価・③アプローチの3点要約）、`notebooklm_sources.txt`、`notebooklm_meta.json`、`--draft` 指定時は `draft_prompt.md` と `article_from_nlm.md`（環境変数 `GEMINI_API_KEY` / `OPENAI_API_KEY` があれば LLM API、未設定時は NotebookLM 自身でソース根拠限定執筆）。
+- 事前確認には `--dry-run` を付けられます。
