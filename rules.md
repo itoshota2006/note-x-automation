@@ -45,3 +45,15 @@
           gmail mutate send-with-attachment --to "itoshota2006@gmail.com" --subject "【X投稿用・翌朝分】自動生成ポスト＆図解カード" --body-file /shared/user/.gemini/note-project/x_post_morning.txt --file /shared/user/.gemini/note-project/x_card_morning.png
           ```
      4. **ローテーション履歴の更新:** 送信完了後、`/shared/user/.gemini/note-project/x_rotation_state.json`（および `~/note-project/x_rotation_state.json`）に今夜分（`slot: "evening"`）と翌朝分（`slot: "next_morning"`）の2件の履歴を追記する。
+
+## 6．note自動下書きルール（毎日19:30実行｜GitHub `itoshota2006/note-x-automation` の `note-themes.txt` 連携）
+1. **GitHub上の `note-themes.txt` の取得・読み取り:**
+   - GitHub リポジトリ `itoshota2006/note-x-automation` の `note-themes.txt` を取得して開く（`gh api "repos/itoshota2006/note-x-automation/contents/note-themes.txt?ref=main" --jq .content | base64 -d` またはクローン済みリポジトリで `git pull` して読み取り、`/shared/user/.gemini/note-project/note-themes.txt` および `~/note-project/note-themes.txt` と同期する）。
+2. **未執筆テーマの選定:** 行頭に `[済]` がついていない一番上の行（テーマ）を1つ選ぶ。
+3. **Deep Research による一次文献検索:** 選定したテーマについて、Deep Research（または文献検索）で一次文献（英語論文・診療ガイドライン・RCT・システマティックレビュー）を検索する。
+4. **NotebookLM でのノート作成と3点要約:** ブラウザ（または `nlm` CLI）で NotebookLM を開き、新しいノートブックを作成して検索した一次文献データをソースとして貼り付け、**①臨床推論・②評価・③アプローチ** の3点で要約させる。
+5. **記事執筆とローカル保存:** NotebookLM の要約と過去記事のトーン（1〜7年目PT向け、先輩PTが後輩に誠実に解説する文体）および [`past_articles.md`](file:///shared/user/.gemini/note-project/past_articles.md) の重複防止ルールをもとに記事を執筆し、`~/note-project/drafts/`（および `/shared/user/.gemini/note-project/drafts/`）に保存する。
+6. **`note.com` への自動下書き保存:** ブラウザで `https://note.com/notes/new` を開き、タイトル・導入文・目次（`[toc]` を目次ブロックに変換）・本文・生成した図解PNG（`diagram_1.png` 等）を自動入力して右上の **「下書き保存」** を押す（※「公開に進む」「投稿」は絶対禁止）。
+7. **GitHub上の `note-themes.txt` の `[済]` 更新・Push:**
+   - `note.com` への下書き保存が成功したら、`note-themes.txt` の該当テーマの行頭に `[済]` をつけて上書き保存し、GitHub リポジトリ（`itoshota2006/note-x-automation`）の `note-themes.txt` に commit & push（または GitHub Contents API `PUT repos/itoshota2006/note-x-automation/contents/note-themes.txt`）して反映させる。
+   - 下書き保存に失敗した場合は `[済]` をつけず、ローカルの `~/note-project/drafts/` に `_未投稿.md` で残す。
