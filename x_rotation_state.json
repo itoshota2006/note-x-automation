@@ -1,0 +1,55 @@
+{
+  "description": "毎日19:45（JST）1回実行・2記事分（今夜分 evening ＋ 翌朝分 next_morning）まとめ生成＆Gmail 2通送信ローテーション履歴台帳",
+  "timezone": "Asia/Tokyo",
+  "schedule_jst": "19:45",
+  "schedule_utc": "10:45",
+  "schedule_pst": "02:45",
+  "batch_size": 2,
+  "slots_per_run": [
+    {
+      "slot": "evening",
+      "subject": "【X投稿用・今夜分】自動生成ポスト＆図解カード",
+      "post_file": "/shared/user/.gemini/note-project/x_post_night.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card_night.png"
+    },
+    {
+      "slot": "next_morning",
+      "subject": "【X投稿用・翌朝分】自動生成ポスト＆図解カード",
+      "post_file": "/shared/user/.gemini/note-project/x_post_morning.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card_morning.png"
+    }
+  ],
+  "recipient_email": "itoshota2006@gmail.com",
+  "history": [
+    {
+      "date": "2026-11-19",
+      "slot": "morning",
+      "key": "n54ecf41be216",
+      "title": "大腿骨転子部骨折の術後、翌日から歩かせるべき？ 若手理学療法士が押さえたい早期離床・荷重・評価の考え方",
+      "url": "https://note.com/benita_pt/n/n54ecf41be216",
+      "post_file": "/shared/user/.gemini/note-project/x_post.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card.png",
+      "email_sent": true
+    },
+    {
+      "date": "2026-11-20",
+      "slot": "evening",
+      "key": "n1a173ea83924",
+      "title": "アルブミン値とCRPをどう読む？理学療法士が押さえたい「栄養評価」と臨床推論の基本",
+      "url": "https://note.com/benita_pt/n/n1a173ea83924",
+      "post_file": "/shared/user/.gemini/note-project/x_post.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card.png",
+      "email_sent": true
+    },
+    {
+      "date": "2026-11-21",
+      "slot": "next_morning",
+      "key": "n9868e711433d",
+      "title": "片脚立位時間をどう評価する？測定方法・結果の解釈から考えるバランス能力と転倒リスク｜新人理学療法士が押さえたい評価の基本",
+      "url": "https://note.com/benita_pt/n/n9868e711433d",
+      "post_file": "/shared/user/.gemini/note-project/x_post_morning.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card_morning.png",
+      "email_sent": true
+    }
+  ]
+}
