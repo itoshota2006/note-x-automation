@@ -1,0 +1,97 @@
+name: Daily Note Draft Generator (19:30 JST)
+
+on:
+  schedule:
+    # 10:30 UTC = 19:30 JST (Every day)
+    - cron: '30 10 * * *'
+  workflow_dispatch:
+    inputs:
+      theme:
+        description: '手動テスト用テーマ（空欄時は note-themes.txt の最上段の未処理テーマを使用）'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'ドライラン（メール送信・[済]更新・Pushをスキップし、Artifactのみ保存）'
+        required: false
+        default: false
+        type: boolean
+      model:
+        description: '使用モデルの上書き（例: gemini-2.5-flash / gemini-2.5-pro）'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-note-draft
+  cancel-in-progress: false
+
+jobs:
+  generate-note-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Japanese Fonts and Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk google-chrome-stable || sudo apt-get install -y fonts-noto-cjk chromium-browser
+
+      - name: Generate Note Draft, Diagrams, and Send Email
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_MODEL: ${{ inputs.model || vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          RECIPIENT_EMAIL: itoshota2006@gmail.com
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          INPUT_THEME: ${{ inputs.theme }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          ARGS=()
+          if [ -n "${INPUT_THEME}" ]; then
+            ARGS+=(--theme "${INPUT_THEME}")
+          fi
+          if [ "${INPUT_DRY_RUN}" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+          python3 run_daily_note_draft.py "${ARGS[@]}"
+
+      - name: Upload Draft Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: note-draft-${{ github.run_number }}
+          path: drafts/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit and Push Draft, Updated note-themes.txt, and past_articles.md
+        if: inputs.dry_run != true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add note-themes.txt past_articles.md
+          if [ -d drafts ]; then
+            git add drafts/
+          fi
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: generate daily note draft ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin main
