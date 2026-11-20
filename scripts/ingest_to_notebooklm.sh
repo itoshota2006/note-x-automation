@@ -297,7 +297,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
     done
   fi
   if [ "$DEEP_RESEARCH" -eq 1 ]; then
-    q="${RESEARCH_QUERY:-${THEME} physical therapy rehabilitation RCT systematic review clinical guideline}"
+    q="${RESEARCH_QUERY:-${THEME} physical therapy rehabilitation latest clinical practice guideline systematic review RCT MDC MCID cutoff limitations}"
     echo "  3) nlm research start \"${q}\" --notebook-id <NOTEBOOK_ID> --mode deep --auto-import"
   fi
   echo "  4) nlm source list <NOTEBOOK_ID> > \"${SOURCES_LIST_FILE}\""
@@ -371,7 +371,7 @@ fi
 
 if [ "$DEEP_RESEARCH" -eq 1 ]; then
   if [ -z "$RESEARCH_QUERY" ]; then
-    RESEARCH_QUERY="${THEME} physical therapy rehabilitation RCT systematic review clinical guideline"
+    RESEARCH_QUERY="${THEME} physical therapy rehabilitation latest clinical practice guideline systematic review RCT MDC MCID cutoff limitations"
   fi
   log_info "  Deep Research 実行＆自動取り込み: ${RESEARCH_QUERY}"
   nlm research start "$RESEARCH_QUERY" --notebook-id "$NOTEBOOK_ID" --mode deep --auto-import
