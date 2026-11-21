@@ -50,6 +50,28 @@
       "post_file": "/shared/user/.gemini/note-project/x_post_morning.txt",
       "card_file": "/shared/user/.gemini/note-project/x_card_morning.png",
       "email_sent": true
+    },
+    {
+      "date": "2026-11-21",
+      "slot": "evening",
+      "key": "n5410547d1ede",
+      "title": "Hb低値をどう考える？貧血と運動耐容能、リハビリの負荷設定｜理学療法士が押さえたい検査値の読み方と臨床推論",
+      "url": "https://note.com/benita_pt/n/n5410547d1ede",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-22",
+      "slot": "next_morning",
+      "key": "na93d0615726c",
+      "title": "BBS（Berg Balance Scale）とは？14項目の評価方法・採点基準と臨床で押さえたいポイント",
+      "url": "https://note.com/benita_pt/n/na93d0615726c",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ]
 }
