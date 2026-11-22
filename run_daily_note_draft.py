@@ -1333,6 +1333,98 @@ def send_draft_email(
 # Main workflow
 # ---------------------------------------------------------------------------
 
+def export_spinoff_noon_pearl(
+    *,
+    theme: str,
+    article_title: str,
+    today_str: str,
+    slug: str,
+    sources: list[dict[str, Any]],
+) -> bool:
+    """
+    Extract 1 distinct sub-angle clinical pearl (NOT the main note theme itself, no URL, no 'note'/'ノート')
+    from the fetched primary literature sources and append it to `knowledge/nlm_exported_kb.md`.
+    """
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from noon_post_generator import (
+        NoonCandidate,
+        append_kb_entry_markdown,
+        ensure_valid_noon_post,
+    )
+
+    if not sources:
+        return False
+
+    source_snippets = []
+    for s in sources[:5]:
+        source_snippets.append(
+            f"- PMID {s.get('pmid', '')} | {s.get('authors', '')} ({s.get('year', '')}) "
+            f"{s.get('journal', '')}: {s.get('title', '')}\n"
+            f"  Abstract: {str(s.get('abstract', ''))[:650]}"
+        )
+    sources_block = "\n".join(source_snippets)
+
+    sys_prompt = (
+        "あなたは運動器領域に精通した理学療法士です。"
+        "与えられたPubMed一次文献の抄録のみを根拠に、元のnote記事テーマそのものの要約ではなく、"
+        "文献内に含まれる『別の臨床ポイント・評価のコツ・測定時の注意点・負荷設定のワンポイント』を1つだけ切り出し、"
+        "X単体で完結する投稿文をJSONで出力してください。\n"
+        "【厳守ルール】\n"
+        "- post は必ず全角110〜130文字以内（最大でも全角130字・X換算260ウェイト以内）に収めること。\n"
+        "- 『note』『ノート』『ノートブック』『記事』『リンク』『URL』『詳しくは』『続きは』『プロフ』『👇』は絶対に使用禁止。\n"
+        "- ソースに記載のない数値・論文名・基準の捏造は厳禁。\n"
+        "- 丁寧な『です・ます』調、2〜3行（改行あり）で完結させること。\n"
+        "- 出力JSONキー: topic (20〜35字の別角度ポイント名), reference (著者・年・誌名), summary (1〜2文の要約), post (X投稿本文)"
+    )
+    user_prompt = (
+        f"元の記事テーマ（これ自体の要約は避けること）: {theme}\n"
+        f"元の記事タイトル: {article_title}\n\n"
+        f"参照した一次文献:\n{sources_block}\n\n"
+        "上記一次文献から、元の記事テーマとは別角度の臨床ワンポイント（評価のコツ・鑑別・測定誤差等）を1つJSONで出力してください。"
+    )
+
+    data = call_llm_json(sys_prompt, user_prompt, temperature=0.35, max_output_tokens=1024)
+    sub_topic = str(data.get("topic") or "").strip()
+    raw_post = str(data.get("post") or "").strip()
+    reference = str(data.get("reference") or "").strip() or str(sources[0].get("title", ""))
+    summary = str(data.get("summary") or "").strip()
+    if not sub_topic or not raw_post:
+        return False
+
+    source_id = f"draft-{today_str}-{slug[:24]}__spinoff"
+    cand = NoonCandidate(
+        source_id=source_id,
+        origin="nlm_spinoff",
+        topic=sub_topic,
+        domain="運動器・記事関連スピンオフ",
+        reference=reference,
+        summary=summary,
+        parent_theme=theme,
+    )
+    final_post, ok, errs = ensure_valid_noon_post(raw_post, cand, avoid_theme=theme)
+    if not ok:
+        print(f"[noon-kb][warn] Generated spinoff post failed validation: {errs}")
+        return False
+
+    kb_path = BASE_DIR / "knowledge" / "nlm_exported_kb.md"
+    written = append_kb_entry_markdown(
+        kb_path,
+        source_id=source_id,
+        topic=sub_topic,
+        post=final_post,
+        origin="nlm_spinoff",
+        domain="運動器・記事関連スピンオフ",
+        reference=reference,
+        summary=summary or f"記事テーマ『{theme}』の一次文献から切り出した別角度の臨床ポイント。",
+        parent_theme=theme,
+    )
+    if written:
+        print(f"[noon-kb] Appended spinoff pearl [{source_id}] {sub_topic} -> {kb_path.name}")
+    return written
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Daily Note Draft Generator for GitHub Actions")
     parser.add_argument("--theme", type=str, default="", help="Override theme (does not mark note-themes.txt)")
@@ -1527,6 +1619,19 @@ def main() -> int:
             sources=sources,
         )
         print(f"[state] Marked line {selected_line_idx + 1} as [済] and updated past_articles.md")
+
+    # Step 7: Append a distinct sub-angle clinical pearl for noon X posts into knowledge/nlm_exported_kb.md
+    if not args.dry_run:
+        try:
+            export_spinoff_noon_pearl(
+                theme=theme,
+                article_title=article_title,
+                today_str=today_str,
+                slug=slug,
+                sources=sources,
+            )
+        except Exception as e:
+            print(f"[noon-kb][warn] Failed to export spinoff noon pearl (non-fatal): {e}")
 
     return 0
 

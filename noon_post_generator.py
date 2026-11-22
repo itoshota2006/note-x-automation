@@ -269,7 +269,7 @@ MUSCULOSKELETAL_BOOST_TERMS = (
 @dataclass
 class NoonCandidate:
     source_id: str
-    origin: str  # "nlm" | "knowledge_base" | "drafts_nlm_export"
+    origin: str  # "nlm" | "nlm_spinoff" | "knowledge_base" | "drafts_nlm_export"
     topic: str
     domain: str = "運動器"
     keywords: list[str] = field(default_factory=list)
@@ -278,6 +278,7 @@ class NoonCandidate:
     post: str = ""
     notebook_id: str | None = None
     notebook_title: str | None = None
+    parent_theme: str = ""
 
 
 @dataclass
@@ -291,8 +292,28 @@ class NoonResult:
 
 
 # ---------------------------------------------------------------------------
-# Text normalization & X length / validation helpers
+# Text normalization & X length / validation / auto-trimming helpers
 # ---------------------------------------------------------------------------
+
+META_OPENER_PATTERNS = [
+    re.compile(r"^(?:はい、?|承知しました[。！]?\s*)"),
+    re.compile(r"^(?:提供された|投入された|この)?(?:ソース|文献|資料|ノートブック|ノート)(?:に基づき|をもとに|によると|では|から)[^。\n]*[。：:]\s*"),
+    re.compile(r"^(?:以下(?:に|は|が))[^。\n]*(?:投稿文|ポスト|解説文|まとめ)[^。\n]*[。：:]\s*"),
+    re.compile(r"^【[^】]{1,40}】\s*"),
+]
+
+# Meta phrases that NotebookLM occasionally emits referencing itself ("このノート", "ノートブック")
+NLM_META_REPLACEMENTS = [
+    (re.compile(r"このノートブック(?:内)?(?:の|では|によると)(?:文献|研究|資料)"), "文献"),
+    (re.compile(r"このノート(?:内)?(?:の|では|によると)(?:文献|研究|資料)"), "文献"),
+    (re.compile(r"ノートブック(?:内)?(?:の|に|から)(?:文献|研究|資料)"), "文献"),
+    (re.compile(r"ノート内(?:の|に|から)(?:文献|研究|資料)"), "文献"),
+    (re.compile(r"このノートブック(?:内)?(?:の|では|によると)"), "文献では"),
+    (re.compile(r"このノート(?:内)?(?:の|では|によると)"), "文献では"),
+    (re.compile(r"ノートブック(?:内)?(?:の|に|から)"), "文献の"),
+    (re.compile(r"ノート内(?:の|に|から)"), "文献の"),
+]
+
 
 def normalize_text(text: str) -> str:
     return unicodedata.normalize("NFKC", text or "").strip()
@@ -317,12 +338,92 @@ def clean_generated_post(raw: str) -> str:
         text = text[1:-1].strip()
     # Remove NotebookLM inline citations like [1], [2, 3], [1-4]
     text = re.sub(r"\s*\[\d+(?:\s*[-,、]\s*\d+)*\]", "", text)
-    # Remove markdown bold/italic markers
+    # Remove markdown bold/italic/heading markers
     text = text.replace("**", "").replace("__", "")
+    text = re.sub(r"(?m)^#+\s*", "", text)
+    # Remove accidental NotebookLM meta-openers
+    for _ in range(3):
+        before = text
+        for pat in META_OPENER_PATTERNS:
+            text = pat.sub("", text).strip()
+        if text == before:
+            break
+    # Neutralize accidental NotebookLM self-references ("このノートでは", "ノートブック内")
+    for pat, repl in NLM_META_REPLACEMENTS:
+        text = pat.sub(repl, text)
     # Collapse excessive blank lines
     lines = [line.strip() for line in text.splitlines()]
     lines = [line for line in lines if line]
     return "\n".join(lines).strip()
+
+
+def trim_post_to_x_limit(text: str, max_weighted_len: int = 280) -> str:
+    """
+    Intelligently summarize/trim an overly long X post to fit within `max_weighted_len`
+    (280 weighted chars = 140 fullwidth Japanese chars) at clean sentence/clause boundaries.
+    """
+    cleaned = clean_generated_post(text)
+    if x_weighted_length(cleaned) <= max_weighted_len:
+        return cleaned
+
+    # 1. Try keeping complete sentences (split after 。！？ or newline)
+    chunks = re.findall(r"[^\n。！？]+[。！？]|\n|[^\n。！？]+$", cleaned)
+    kept: list[str] = []
+    for ch in chunks:
+        if ch == "\n":
+            candidate = "".join(kept) + "\n"
+        else:
+            candidate = "".join(kept) + ch
+        if x_weighted_length(candidate.strip()) <= max_weighted_len:
+            kept.append(ch)
+        else:
+            break
+
+    sentence_trimmed = "".join(kept).strip()
+    # Accept sentence-level trim if it keeps a meaningful clinical body (>= 120 weighted = ~60 fullwidth chars)
+    if x_weighted_length(sentence_trimmed) >= 120 and sentence_trimmed[-1:] in ("。", "！", "？"):
+        return sentence_trimmed
+
+    # 2. Otherwise trim cleanly at clause boundary (、 or space or closing paren) within budget
+    budget = max_weighted_len - 2  # reserve room for trailing "。"
+    acc: list[str] = []
+    w = 0
+    for ch in cleaned:
+        cw = 1 if ord(ch) <= 0x7F else 2
+        if w + cw > budget:
+            break
+        acc.append(ch)
+        w += cw
+    prefix = "".join(acc).rstrip()
+
+    # Prefer cutting at the last sentence or clause boundary in the second half
+    min_cut = max(len(prefix) // 2, 10)
+    cut_pos = -1
+    for delim in ("。", "！", "？", "\n", "、", "）", ")"):
+        idx = prefix.rfind(delim)
+        if idx >= min_cut:
+            cut_pos = max(cut_pos, idx)
+
+    if cut_pos != -1:
+        ch = prefix[cut_pos]
+        if ch in ("。", "！", "？"):
+            prefix = prefix[: cut_pos + 1].strip()
+        elif ch in ("）", ")"):
+            prefix = prefix[: cut_pos + 1].strip()
+        else:
+            prefix = prefix[:cut_pos].strip()
+
+    # Strip trailing dangling particles/punctuation before appending "。"
+    prefix = re.sub(r"[、,・:：/／\-\s]+$", "", prefix)
+    if prefix and prefix[-1] not in ("。", "！", "？"):
+        prefix = re.sub(r"(?:は|が|を|に|で|の|と|や|も|へ|から|まで|より|ため|など)$", "", prefix).rstrip("、")
+        if prefix and prefix[-1] not in ("。", "！", "？"):
+            prefix = prefix + "。"
+
+    # Final safety guard against budget overflow
+    while x_weighted_length(prefix) > max_weighted_len and len(prefix) > 10:
+        prefix = prefix[:-2].rstrip("、") + "。"
+    return prefix.strip()
 
 
 def validate_noon_post(text: str, max_weighted_len: int = 280) -> tuple[bool, list[str]]:
@@ -508,6 +609,21 @@ def is_overlapping_with_existing_notes(
     candidate: NoonCandidate,
     existing_ctx: dict[str, Any],
 ) -> tuple[bool, str]:
+    # Spin-off entries are explicitly extracted as distinct sub-angle clinical pearls
+    # from a note article's primary literature notebook. Only exclude them if their
+    # sub-topic title itself is practically identical to an existing note title.
+    if candidate.origin == "nlm_spinoff":
+        cand_tri = _char_trigrams(candidate.topic)
+        for entry in existing_ctx.get("entries", []):
+            if normalize_text(candidate.topic).lower() == normalize_text(entry["label"]).lower():
+                return True, f"{entry['source']}『{entry['label'][:40]}』と完全一致"
+            if cand_tri and entry["trigrams"]:
+                inter = len(cand_tri & entry["trigrams"])
+                min_len = min(len(cand_tri), len(entry["trigrams"]))
+                if min_len >= 8 and (inter / min_len) >= 0.70:
+                    return True, f"{entry['source']}『{entry['label'][:40]}』とトピック酷似（{inter/min_len:.0%}）"
+        return False, ""
+
     check_text = candidate.topic
     if candidate.notebook_title and candidate.origin != "knowledge_base":
         check_text = f"{candidate.notebook_title} {candidate.topic}"
@@ -612,6 +728,7 @@ def parse_knowledge_markdown(md_path: Path) -> list[NoonCandidate]:
                 post=post_text,
                 notebook_id=meta.get("notebook_id") or None,
                 notebook_title=meta.get("notebook_title") or None,
+                parent_theme=meta.get("parent_theme", ""),
             )
         )
 
@@ -806,6 +923,8 @@ def fetch_live_nlm_candidates(
     nlm_bin: str,
     existing_ctx: dict[str, Any],
     max_notebooks: int = 12,
+    *,
+    allow_overlap_notebooks: bool = False,
 ) -> list[NoonCandidate]:
     """Query `nlm` CLI for sources across authenticated NotebookLM notebooks."""
     notebooks = list_nlm_notebooks(nlm_bin)
@@ -816,7 +935,8 @@ def fetch_live_nlm_candidates(
         nb_id = nb["id"]
         nb_title = nb.get("title", "")
         # Skip entire notebook if its title explicitly matches an existing note article theme
-        if nb_title:
+        # (unless allow_overlap_notebooks=True for spin-off extraction from a newly drafted article's notebook)
+        if nb_title and not allow_overlap_notebooks:
             overlaps, reason = _check_topic_overlap_against_entries(
                 nb_title, [], existing_ctx.get("entries", [])
             )
@@ -867,35 +987,111 @@ def fetch_live_nlm_candidates(
     return candidates
 
 
-def query_nlm_for_noon_post(nlm_bin: str, candidate: NoonCandidate) -> str:
-    """Use `nlm notebook query` to generate a strict standalone clinical X post from one source."""
-    assert candidate.notebook_id is not None
-    prompt = (
-        f"以下の特定ソース（文献名: {candidate.topic} / ID: {candidate.source_id}）の記載内容のみを根拠に、"
-        "若手〜中堅の理学療法士（運動器領域メイン）が『明日の臨床でそのまま使える』と感じる"
-        "評価・治療のワンポイントまたは文献知見を、X（旧Twitter）単体で完結する投稿文として1つだけ作成してください。\n\n"
-        "【厳守ルール】\n"
-        "1. URL、リンク、noteへの誘導（「詳しくはnoteで」「記事はこちら」「プロフから」等）は一切禁止。\n"
-        "2. 全角120〜138文字以内（X標準280ウェイト以内）で完結させること。\n"
-        "3. ソースに記載された事実・数値・基準のみを使い、捏造しないこと。\n"
-        "4. 引用番号（[1]など）やMarkdown記号（**など）、前置きや見出しは出力せず、投稿本文のみを出力すること。\n"
-        "5. 丁寧な『です・ます』調で、2〜3行に改行して読みやすくすること。"
-    )
+def _run_nlm_query(nlm_bin: str, notebook_id: str, prompt: str) -> str:
     res = subprocess.run(
-        [nlm_bin, "notebook", "query", candidate.notebook_id, prompt],
+        [nlm_bin, "notebook", "query", notebook_id, prompt],
         capture_output=True,
         text=True,
         timeout=90,
     )
     if res.returncode != 0:
         raise RuntimeError(f"nlm notebook query failed (code {res.returncode}): {res.stderr[:300]}")
-
     parsed = _parse_nlm_json_or_lines(res.stdout)
     if isinstance(parsed, dict) and parsed.get("answer"):
-        raw = str(parsed["answer"])
-    else:
-        raw = res.stdout
+        return str(parsed["answer"])
+    return res.stdout
+
+
+def query_nlm_for_noon_post(
+    nlm_bin: str,
+    candidate: NoonCandidate,
+    *,
+    avoid_theme: str = "",
+    correction_feedback: str = "",
+    previous_draft: str = "",
+) -> str:
+    """Use `nlm notebook query` to generate a strict standalone clinical X post from one source."""
+    assert candidate.notebook_id is not None
+    spinoff_instruction = ""
+    if avoid_theme:
+        spinoff_instruction = (
+            f"【重要：切り口の差別化】\n"
+            f"- 元の記事テーマ『{avoid_theme}』そのものの要約や結論の繰り返しは禁止。\n"
+            "- ソースの中に含まれる**別の臨床ポイント・評価のコツ・測定条件の注意点・鑑別の視点・負荷設定のワンポイント**を1つだけ独立して切り出すこと。\n\n"
+        )
+
+    retry_instruction = ""
+    if correction_feedback:
+        retry_instruction = (
+            f"【前回のNG理由（必ず修正すること）】\n"
+            f"- 理由: {correction_feedback}\n"
+            f"- 前回出力:\n{previous_draft}\n"
+            "- 上記を必ず全角110〜125文字以内、『note』『ノート』完全不使用で簡潔に書き直してください。\n\n"
+        )
+
+    prompt = (
+        f"以下の特定ソース（文献名: {candidate.topic} / ID: {candidate.source_id}）の記載内容のみを根拠に、"
+        "若手〜中堅の理学療法士（運動器領域メイン）が『明日の臨床でそのまま使える』と感じる"
+        "評価・治療のワンポイントまたは文献知見を、X（旧Twitter）単体で完結する投稿文として1つだけ作成してください。\n\n"
+        f"{spinoff_instruction}"
+        f"{retry_instruction}"
+        "【厳守ルール（違反不可）】\n"
+        "1. 文字数は**必ず全角110〜130文字以内**（最大でも全角130字・X換算260ウェイト以内）に収めること。130字を絶対に超えないこと。\n"
+        "2. 『note』『ノート』『ノートブック』『記事』『リンク』『URL』『詳しくは』『続きは』『プロフ』『👇』という単語・表現は理由を問わず絶対に使わないこと。\n"
+        "3. 『このノートでは』『提供されたソースによると』『以下は〜』などの前置きは禁止。いきなり臨床の問いかけや知見から書き始めること。\n"
+        "4. ソースに記載された事実・数値・基準のみを使い、捏造しないこと。\n"
+        "5. 引用番号（[1]など）やMarkdown記号（**、#など）、見出しは出力せず、投稿本文のみを出力すること。\n"
+        "6. 丁寧な『です・ます』調で、2〜3行に改行して読みやすく完結させること。"
+    )
+    raw = _run_nlm_query(nlm_bin, candidate.notebook_id, prompt)
     return clean_generated_post(raw)
+
+
+def query_nlm_for_spinoff_pair(
+    nlm_bin: str,
+    candidate: NoonCandidate,
+    *,
+    avoid_theme: str,
+) -> tuple[str, str]:
+    """
+    Ask NotebookLM for a distinct sub-angle clinical pearl (both concise sub-topic title and X post)
+    so it doesn't repeat the parent note article's main theme.
+    """
+    assert candidate.notebook_id is not None
+    prompt = (
+        f"以下の特定ソース（文献名: {candidate.topic} / ID: {candidate.source_id}）の記載内容のみを根拠に、"
+        f"元の解説テーマ『{avoid_theme}』そのものではなく、文献内に含まれる**別の臨床ポイント・評価のコツ・測定時の注意点**を1つ切り出してください。\n\n"
+        "必ず以下の2行フォーマットのみで出力してください（前置き・解説・Markdown記号・引用番号[1]は一切不要）：\n"
+        "TOPIC: <元のテーマと重複しない具体的な臨床ポイント名（20〜35文字）>\n"
+        "POST: <X単体で完結する投稿本文（改行可、必ず全角110〜130文字以内）>\n\n"
+        "【絶対禁止ルール】\n"
+        "- POSTは必ず全角130文字以内（X換算260ウェイト以内）に厳守すること。\n"
+        "- 『note』『ノート』『ノートブック』『記事』『リンク』『URL』『詳しくは』『続きは』『プロフ』『👇』は絶対に使わないこと。\n"
+        "- 『提供されたソースでは』などの前置き禁止。丁寧な『です・ます』調で臨床に直結する内容にすること。"
+    )
+    raw = _run_nlm_query(nlm_bin, candidate.notebook_id, prompt)
+    sub_topic = ""
+    post_lines: list[str] = []
+    in_post = False
+    for line in raw.splitlines():
+        s = line.strip()
+        if not in_post and s.upper().startswith("TOPIC:"):
+            sub_topic = clean_generated_post(s.split(":", 1)[1]).replace("\n", " ")
+        elif s.upper().startswith("POST:"):
+            in_post = True
+            rest = s.split(":", 1)[1].strip()
+            if rest:
+                post_lines.append(rest)
+        elif in_post:
+            if s:
+                post_lines.append(s)
+
+    post_raw = "\n".join(post_lines).strip() if post_lines else raw
+    post_clean = clean_generated_post(post_raw)
+    if not sub_topic:
+        first_line = post_clean.splitlines()[0] if post_clean else candidate.topic
+        sub_topic = f"【臨床ポイント】{first_line[:32]}"
+    return sub_topic, post_clean
 
 
 # ---------------------------------------------------------------------------
@@ -907,6 +1103,7 @@ def generate_noon_post_via_llm(
     *,
     previous_post_preview: str = "",
     validation_feedback: str = "",
+    avoid_theme: str = "",
 ) -> str | None:
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
@@ -919,15 +1116,19 @@ def generate_noon_post_via_llm(
         "『明日の臨床でそのまま使える』と感じる評価・治療のワンポイントを、"
         "X（旧Twitter）単体で完結する投稿文として作成してください。\n"
         "【絶対禁止事項】\n"
-        "- URL、リンク、noteや外部記事への誘導（「詳しくはnoteで」「続きは」「プロフから」「👇」等）は一切禁止。\n"
+        "- 『note』『ノート』『ノートブック』『記事』『リンク』『URL』『詳しくは』『続きは』『プロフ』『👇』という語句・誘導表現は理由を問わず絶対に使用しないこと。\n"
         "- ソースに記載のない数値・論文名・基準の捏造は禁止。\n"
         "- Markdown記号（**、#等）、引用番号（[1]）、前置き解説は禁止。投稿本文のみ出力すること。\n"
         "【文体・文字数】\n"
-        "- 全角115〜136文字以内（半角1・全角2換算で280以下）。\n"
+        "- **必ず全角110〜130文字以内**（半角1・全角2換算で260以下、最大280厳守）。\n"
         "- 丁寧な『です・ます』調、2〜3段落（改行あり）で読みやすく完結させる。"
     )
 
     extra_note = ""
+    if avoid_theme:
+        extra_note += (
+            f"\n※元のテーマ『{avoid_theme}』そのものの要約は避け、文献内の別の臨床ポイント・評価のコツを切り出すこと。\n"
+        )
     if previous_post_preview:
         extra_note += f"\n※前回投稿（表現・切り口を変えて新しく作成すること）:\n{previous_post_preview}\n"
     if validation_feedback:
@@ -939,7 +1140,7 @@ def generate_noon_post_via_llm(
         f"参考根拠: {candidate.reference or '一次文献ソース'}\n"
         f"知見メモ:\n{candidate.summary or candidate.post}\n"
         f"{extra_note}\n"
-        "上記のみを根拠に、X投稿本文のみを出力してください。"
+        "上記のみを根拠に、全角130文字以内・『note』『ノート』不使用でX投稿本文のみを出力してください。"
     )
 
     try:
@@ -997,6 +1198,134 @@ def generate_noon_post_via_llm(
         return None
 
     return None
+
+
+def ensure_valid_noon_post(
+    raw_text: str,
+    candidate: NoonCandidate,
+    *,
+    nlm_bin: str | None = None,
+    avoid_theme: str = "",
+    max_weighted_len: int = 280,
+) -> tuple[str, bool, list[str]]:
+    """
+    Validate a generated noon post, automatically retrying via LLM / nlm on forbidden words
+    or length overflow, and applying clean sentence-boundary trimming as final fallback
+    when only length exceeds 280 weighted chars.
+    """
+    current = clean_generated_post(raw_text)
+    ok, errs = validate_noon_post(current, max_weighted_len=max_weighted_len)
+    if ok:
+        return current, True, []
+
+    # Step 1: If forbidden words or length overflow, attempt concise rewrite via LLM API first
+    llm_refined = generate_noon_post_via_llm(
+        NoonCandidate(
+            source_id=candidate.source_id,
+            origin=candidate.origin,
+            topic=candidate.topic,
+            domain=candidate.domain,
+            reference=candidate.reference,
+            summary=current,
+        ),
+        validation_feedback="; ".join(errs),
+        avoid_theme=avoid_theme,
+    )
+    if llm_refined:
+        current = clean_generated_post(llm_refined)
+        ok, errs = validate_noon_post(current, max_weighted_len=max_weighted_len)
+        if ok:
+            return current, True, []
+
+    # Step 2: If nlm CLI is available and candidate has a notebook_id, retry nlm query once with explicit error feedback
+    if nlm_bin and candidate.notebook_id:
+        try:
+            retried = query_nlm_for_noon_post(
+                nlm_bin,
+                candidate,
+                avoid_theme=avoid_theme,
+                correction_feedback="; ".join(errs),
+                previous_draft=current,
+            )
+            current = clean_generated_post(retried)
+            ok, errs = validate_noon_post(current, max_weighted_len=max_weighted_len)
+            if ok:
+                return current, True, []
+        except Exception as e:
+            print(f"[noon][nlm] Retry rewrite failed: {e}")
+
+    # Step 3: Automatic summarization/trimming if length overflow remains
+    if x_weighted_length(current) > max_weighted_len:
+        trimmed = trim_post_to_x_limit(current, max_weighted_len=max_weighted_len)
+        ok_trim, errs_trim = validate_noon_post(trimmed, max_weighted_len=max_weighted_len)
+        if ok_trim:
+            print(
+                f"[noon][trim] Auto-trimmed post from {x_weighted_length(current)} "
+                f"-> {x_weighted_length(trimmed)} weighted chars."
+            )
+            return trimmed, True, []
+        current, errs = trimmed, errs_trim
+
+    return current, False, errs
+
+
+def append_kb_entry_markdown(
+    out_path: Path,
+    *,
+    source_id: str,
+    topic: str,
+    post: str,
+    origin: str = "nlm",
+    domain: str = "運動器・NotebookLM文献",
+    reference: str = "",
+    summary: str = "",
+    notebook_id: str = "",
+    notebook_title: str = "",
+    parent_theme: str = "",
+    keywords: list[str] | None = None,
+) -> bool:
+    """Append a structured entry to knowledge/nlm_exported_kb.md (skips if source_id already exists)."""
+    existing_ids = {c.source_id for c in parse_knowledge_markdown(out_path)}
+    if source_id in existing_ids:
+        return False
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if not out_path.exists():
+        now_jst = datetime.now(JST).strftime("%Y-%m-%d %H:%M JST")
+        header = (
+            "# NotebookLM 抽出ナレッジベース（昼用X投稿・リンクなし）\n\n"
+            f"`scripts/export_nlm_knowledge.py` / 記事作成フローにより自動書き出し（初回作成: {now_jst}）。\n"
+            "GitHub Actions 実行時に自動で候補として読み込まれます。\n\n"
+            "---\n"
+        )
+        out_path.write_text(header, encoding="utf-8")
+
+    indented_post = "\n".join(f"  {line}" for line in post.splitlines())
+    lines = [
+        "",
+        f"## [{source_id}] {topic}",
+        f"- source_id: {source_id}",
+        f"- origin: {origin}",
+    ]
+    if notebook_id:
+        lines.append(f"- notebook_id: {notebook_id}")
+    if notebook_title:
+        lines.append(f"- notebook_title: {notebook_title}")
+    if parent_theme:
+        lines.append(f"- parent_theme: {parent_theme}")
+    lines.append(f"- domain: {domain}")
+    lines.append(f"- topic: {topic}")
+    if keywords:
+        lines.append(f"- keywords: {', '.join(keywords)}")
+    lines.append(f"- reference: {reference or topic}")
+    lines.append(f"- summary: {summary or f'一次文献『{reference or topic}』から抽出した臨床ポイント。'}")
+    lines.append("- post: |")
+    lines.append(indented_post)
+    lines.append("")
+
+    with out_path.open("a", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -1167,26 +1496,12 @@ def generate_next_noon_post(
     if picked.origin == "nlm" and nlm_bin:
         try:
             raw_post = query_nlm_for_noon_post(nlm_bin, picked)
-            ok, errs = validate_noon_post(raw_post)
+            final_post, ok, errs = ensure_valid_noon_post(raw_post, picked, nlm_bin=nlm_bin)
             if ok:
-                post_text = raw_post
+                post_text = final_post
                 generation_method = "nlm_cli_query"
             else:
-                print(f"[noon][nlm] Query output failed validation ({errs}); attempting LLM refinement...")
-                refined = generate_noon_post_via_llm(
-                    NoonCandidate(
-                        source_id=picked.source_id,
-                        origin=picked.origin,
-                        topic=picked.topic,
-                        domain=picked.domain,
-                        reference=picked.reference,
-                        summary=raw_post,
-                    ),
-                    validation_feedback="; ".join(errs),
-                )
-                if refined and validate_noon_post(refined)[0]:
-                    post_text = refined
-                    generation_method = "nlm_cli_plus_llm_refine"
+                print(f"[noon][nlm] Query output remained invalid after retry/trim ({errs}); falling back to KB.")
         except Exception as e:
             print(f"[noon][nlm] Live query failed ({e}); falling back to repository KB.")
 
@@ -1200,28 +1515,28 @@ def generate_next_noon_post(
         needs_llm = (not picked.post) or (cycle >= 2) or rewrite_flag
         if needs_llm:
             prev_preview = _find_previous_preview(history_state, picked.source_id)
-            for attempt in range(2):
-                feedback = "" if attempt == 0 else "URL・note誘導を一切含めず、全角120〜135文字以内で完結させてください。"
-                llm_post = generate_noon_post_via_llm(
+            llm_post = generate_noon_post_via_llm(
+                picked,
+                previous_post_preview=prev_preview,
+                avoid_theme=picked.parent_theme,
+            )
+            if llm_post:
+                final_post, ok, errs = ensure_valid_noon_post(
+                    llm_post,
                     picked,
-                    previous_post_preview=prev_preview,
-                    validation_feedback=feedback,
+                    avoid_theme=picked.parent_theme,
                 )
-                if llm_post:
-                    ok, errs = validate_noon_post(llm_post)
-                    if ok:
-                        post_text = llm_post
-                        generation_method = "kb_plus_llm_api"
-                        break
-                    else:
-                        print(f"[noon][llm] Attempt {attempt + 1} invalid: {errs}")
+                if ok:
+                    post_text = final_post
+                    generation_method = "kb_plus_llm_api"
+                else:
+                    print(f"[noon][llm] Generated post invalid even after trim: {errs}")
 
     if not post_text and picked.post:
-        cleaned = clean_generated_post(picked.post)
-        ok, errs = validate_noon_post(cleaned)
+        final_post, ok, errs = ensure_valid_noon_post(picked.post, picked)
         if not ok:
             raise RuntimeError(f"KB entry '{picked.source_id}' failed validation: {errs}")
-        post_text = cleaned
+        post_text = final_post
         generation_method = "knowledge_base_curated"
 
     if not post_text:
@@ -1232,6 +1547,7 @@ def generate_next_noon_post(
 
     origin_labels = {
         "nlm": "NotebookLM（nlm CLIリアルタイム抽出）",
+        "nlm_spinoff": "NotebookLM 記事関連文献からの別角度臨床ポイント（knowledge/nlm_exported_kb.md）",
         "knowledge_base": "リポジトリ内ナレッジベース（knowledge/）",
         "drafts_nlm_export": "リポジトリ内NotebookLM書き出し（drafts/）",
     }

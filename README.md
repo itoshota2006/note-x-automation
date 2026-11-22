@@ -88,7 +88,14 @@ Mac 上で `notebooklm-mcp-cli`（`nlm`）の初回ログイン（`nlm login --s
   - すべての候補を使い切ると自動で履歴をリセットして 2 周目に入ります（`GEMINI_API_KEY` / `OPENAI_API_KEY` 設定時は 2 周目以降に別切り口で再生成します）。
 - **Macローカルの NotebookLM 知見を GitHub Actions へ同期するコマンド：**
   ```bash
-  # NotebookLM から未登録ソースを抽出し knowledge/nlm_exported_kb.md へ書き出す
-  python3 scripts/export_nlm_knowledge.py --limit 5
+  # 1) 全ノートブックから未登録ソースを抽出し knowledge/nlm_exported_kb.md へ書き出す（自動Push付き）
+  python3 scripts/export_nlm_knowledge.py --limit 5 --git-push
+
+  # 2) 新規note記事で使用したノートブックから「別角度の臨床ポイント」を切り出して自動Push
+  python3 scripts/export_nlm_knowledge.py \
+    --notebook-id "<NOTEBOOK_ID>" \
+    --spinoff-theme "<元の記事テーマ>" \
+    --limit 2 \
+    --git-push
   ```
-  書き出し後に `git add knowledge/nlm_exported_kb.md && git commit && git push` すると、次回 19:45 JST の GitHub Actions 実行から自動で選定対象に含まれます。
+  ※`./scripts/ingest_to_notebooklm.sh` や 19:30 JST の `run_daily_note_draft.py` 実行時にも、自動で `knowledge/nlm_exported_kb.md` への別角度スピンオフ追記が行われます。

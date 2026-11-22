@@ -79,7 +79,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Commit and Push Draft, Updated note-themes.txt, and past_articles.md
+      - name: Commit and Push Draft, Updated note-themes.txt, past_articles.md, and Noon KB
         if: inputs.dry_run != true
         run: |
           git config user.name "github-actions[bot]"
@@ -88,10 +88,13 @@ jobs:
           if [ -d drafts ]; then
             git add drafts/
           fi
+          if [ -f knowledge/nlm_exported_kb.md ]; then
+            git add knowledge/nlm_exported_kb.md
+          fi
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
-          git commit -m "chore: generate daily note draft ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
+          git commit -m "chore: generate daily note draft & noon clinical pearl ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
           git pull --rebase origin main
           git push origin main

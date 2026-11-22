@@ -45,6 +45,9 @@ DEEP_RESEARCH=0
 RESEARCH_QUERY=""
 DO_DRAFT=0
 DRAFT_VIA="auto" # auto | api | nlm
+EXPORT_NOON=1
+EXPORT_NOON_LIMIT=2
+GIT_PUSH_NOON=0
 DRY_RUN=0
 RATE_LIMIT_WAIT=2
 FILES=()
@@ -66,6 +69,9 @@ usage() {
   --out-dir <ディレクトリ>  要約・記事の出力先ディレクトリ
   --draft                   3点要約の後に rules.md 準拠の記事下書き (article_from_nlm.md) も自動生成
   --draft-via <方式>        記事執筆バックエンド: auto (既定) | api | nlm
+  --no-export-noon          昼用X投稿向けスピンオフ知見（knowledge/nlm_exported_kb.md）の自動追記を無効化
+  --export-noon-limit <件数> 昼用X投稿向けに切り出す別角度知見の件数（既定: 2）
+  --git-push-noon           knowledge/nlm_exported_kb.md 追記後に自動で git commit & push origin main
   --dry-run                 nlm コマンドを実行せず、実行予定の手順のみ表示
   -h, --help                このヘルプを表示
 
@@ -150,6 +156,19 @@ while [ $# -gt 0 ]; do
       [ $# -ge 2 ] || die "--draft-via には auto / api / nlm のいずれかを指定してください"
       DRAFT_VIA="$2"
       shift 2
+      ;;
+    --no-export-noon)
+      EXPORT_NOON=0
+      shift
+      ;;
+    --export-noon-limit)
+      [ $# -ge 2 ] || die "--export-noon-limit には件数を指定してください"
+      EXPORT_NOON_LIMIT="$2"
+      shift 2
+      ;;
+    --git-push-noon)
+      GIT_PUSH_NOON=1
+      shift
       ;;
     --dry-run)
       DRY_RUN=1
@@ -304,6 +323,9 @@ if [ "$DRY_RUN" -eq 1 ]; then
   echo "  5) nlm notebook query <NOTEBOOK_ID> <3点要約プロンプト> > \"${SUMMARY_FILE}\""
   if [ "$DO_DRAFT" -eq 1 ]; then
     echo "  6) 記事執筆 (--draft-via ${DRAFT_VIA}) -> \"${ARTICLE_FILE}\""
+  fi
+  if [ "$EXPORT_NOON" -eq 1 ]; then
+    echo "  7) 昼用X投稿スピンオフ知見抽出 -> \"${REPO_ROOT}/knowledge/nlm_exported_kb.md\" (limit=${EXPORT_NOON_LIMIT}, git_push=${GIT_PUSH_NOON})"
   fi
   exit 0
 fi
@@ -555,6 +577,24 @@ meta = {
 }
 Path(meta_path).write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
+
+# ==============================================================================
+# Step 6: 昼用X投稿（リンクなし・別角度の臨床ポイント）ナレッジベースへ自動追記
+# ==============================================================================
+if [ "$EXPORT_NOON" -eq 1 ] && [ -f "${SCRIPT_DIR}/export_nlm_knowledge.py" ]; then
+  log_info "昼用X投稿向けの別角度臨床ポイントを knowledge/nlm_exported_kb.md へ自動抽出しています..."
+  EXPORT_ARGS=(
+    --notebook-id "$NOTEBOOK_ID"
+    --spinoff-theme "$THEME"
+    --limit "$EXPORT_NOON_LIMIT"
+  )
+  if [ "$GIT_PUSH_NOON" -eq 1 ]; then
+    EXPORT_ARGS+=(--git-push)
+  fi
+  if ! python3 "${SCRIPT_DIR}/export_nlm_knowledge.py" "${EXPORT_ARGS[@]}"; then
+    log_warn "昼用X投稿向けスピンオフ知見の自動抽出で一部エラーが発生しました（記事作業は継続可能です）。"
+  fi
+fi
 
 log_info "=============================================="
 log_info "完了しました！"

@@ -19,8 +19,9 @@
    - HTML/CSS（白背景・ネイビー基調）からヘッドレスChromeで高解像度PNG図解を **1〜2枚** 生成する。
    - ローカルの `note.com`（`https://note.com/notes/new`）を開き、タイトル・導入文直後の `[toc]`（目次ブロック変換）・本文・図解PNG画像を自動入力して右上の **「下書き保存」** を押す（**「公開に進む」「投稿」ボタンは絶対に押さないこと**）。
    - **失敗時フォールバック：** `note.com` のブラウザ操作に失敗した場合は、ローカルに `_未投稿.md` として保存し、`itoshota2006@gmail.com` へメール送信する（生成した図解PNGも添付する）。
-4. **履歴更新＆3部構成での完了報告（詳細は第5章）：**
-   - 完了後、`past_articles.md` を更新し、チャット欄に **【第1部：編集長分析】【第2部：医学的校閲チェック】【第3部：最終チェック＆X告知文（140字以内）】** の3部構成で報告する。
+4. **履歴更新・昼用X知見の自動追記＆Push・3部構成での完了報告（詳細は第5章）：**
+   - 完了後、`past_articles.md` を更新し、今回の記事で使用した NotebookLM ノートブックの一次文献から **「元の記事テーマそのものではなく、文献内の別の臨床ポイント・評価のコツ」** をリンクなし・全角130字以内で切り出して `knowledge/nlm_exported_kb.md` へ追記し、GitHub リポジトリへ自動 commit & push する（`./scripts/ingest_to_notebooklm.sh` 実行時に自動抽出され、未抽出時や単独実行時は `python3 scripts/export_nlm_knowledge.py --notebook-id "<NOTEBOOK_ID>" --spinoff-theme "<テーマ>" --limit 2 --git-push` を実行する）。
+   - チャット欄に **【第1部：編集長分析】【第2部：医学的校閲チェック】【第3部：最終チェック＆X告知文（140字以内）】** の3部構成で報告する。
 
 ---
 
@@ -62,8 +63,19 @@
        --file "<保存先>/diagram_1.png"
      ```
      （※無人実行モードで `send-with-attachment` が制限される場合は `gmail mutate create-draft`、ローカルSMTP利用時は `GMAIL_APP_PASSWORD` 経由で送信する。）
-4. **完了後の履歴更新＆3部構成チャット報告：**
+4. **完了後の履歴更新・昼用Xスピンオフ知見の自動追記＆Push・3部構成チャット報告：**
    - 完了後、`past_articles.md`（リポジトリ直下、`/shared/user/.gemini/note-project/past_articles.md`、および `~/note-project/past_articles.md`）に今回の記事情報（タイトル・種別・構成・切り口・表/図解・引用文献）を追記・更新する。
+   - **翌日 昼用X投稿（リンクなし・臨床知見）ナレッジベースへの自動追記＆GitHub反映：**
+     - 新しい記事を作成・下書き保存するたびに、使用した NotebookLM ノートブック（`drafts/<フォルダ>/notebooklm_meta.json` の `notebook_id`）内の一次文献から、**元の記事テーマそのものではなく、文献内に含まれる別の臨床ポイント・評価のコツ・測定時の注意点** を切り出して `knowledge/nlm_exported_kb.md` へ追記する（`origin: nlm_spinoff`、全角130字以内、URL・`note`・`ノート` の語句は完全禁止）。
+     - 標準コマンド：
+       ```bash
+       python3 scripts/export_nlm_knowledge.py \
+         --notebook-id "<NOTEBOOK_ID>" \
+         --spinoff-theme "<元の記事テーマ>" \
+         --limit 2
+       ```
+       （※`./scripts/ingest_to_notebooklm.sh` 実行時にも自動で実行される。GitHub Actions の 19:30 自動下書きでは `run_daily_note_draft.py` が一次文献から自動追記する。）
+     - 追記後、`past_articles.md`・`note-themes.txt`（該当時）・`knowledge/nlm_exported_kb.md` を GitHub リポジトリ（`origin main`）へ commit & push し、次回 19:45 JST の `daily_x.yml` から自動で昼用投稿のローテーション候補に組み込まれるようにする。
    - チャット欄に必ず以下の **3部構成** で報告する：
      - **【第1部：編集長分析】**（重複回避の根拠・独自の切り口・ゼロベース構成設計の意図）
      - **【第2部：医学的校閲チェック】**（一次文献との整合性・MDC/MCID・対象集団・抄録限定事項・限界のチェック結果）
@@ -98,8 +110,8 @@
    - ローカル実行時は `./scripts/ingest_to_notebooklm.sh --theme "[選定テーマ]" --deep-research` を実行し、2026年11月時点の最新ガイドライン・SR・RCT・測定特性（MDC/MCID/カットオフ値）・研究の限界を一次文献として NotebookLM の新規ノートブックへ自動投入し、**①臨床推論・②評価・③アプローチ** の3点要約を完了させる（※詳細は第7章、GitHub Actions 無人実行時は `run_daily_note_draft.py` による PubMed 一次文献取得を利用）。
 4. **記事執筆とローカル保存:** 第1〜4章の編集長ルールおよび `past_articles.md` の重複防止ルールを厳守して記事を執筆し、`~/note-project/drafts/`（および `/shared/user/.gemini/note-project/drafts/`・リポジトリの `drafts/`）に保存する。
 5. **図解生成＆ `note.com` への自動下書き保存:** 第5章の手順に従い、高解像度PNG図解を1〜2枚生成したうえで `https://note.com/notes/new` へタイトル・導入文・`[toc]`（目次ブロック変換）・本文・図解PNGを自動入力し、右上の **「下書き保存」** を押す（※「公開に進む」「投稿」は絶対禁止）。
-6. **GitHub上の `note-themes.txt` の `[済]` 更新・Push＆失敗時対応:**
-   - `note.com` への下書き保存が成功したら、`past_articles.md` を更新し、`note-themes.txt` の該当テーマの行頭に `[済]` をつけて上書き保存して GitHub リポジトリ（`itoshota2006/note-x-automation`）へ commit & push（または GitHub Contents API `PUT repos/itoshota2006/note-x-automation/contents/note-themes.txt`）する。
+6. **GitHub上の `note-themes.txt` の `[済]` 更新・昼用知見追記＆Push・失敗時対応:**
+   - `note.com` への下書き保存が成功したら、`past_articles.md` を更新し、使用した NotebookLM ノートブックから別角度の臨床ポイント（リンクなし・全角130字以内・`note`/`ノート`禁止）を `knowledge/nlm_exported_kb.md` へ追記したうえで、`note-themes.txt` の該当テーマの行頭に `[済]` をつけて上書き保存し、GitHub リポジトリ（`itoshota2006/note-x-automation`）へ `git add past_articles.md note-themes.txt knowledge/nlm_exported_kb.md && git commit && git push origin main` する。
    - 下書き保存に失敗した場合は `[済]` をつけず、ローカルに `_未投稿.md` として保存し、`itoshota2006@gmail.com` へメール送信する。
 
 ## 7．NotebookLMへの自動投入手順（Macローカル｜`nlm` CLI・MCP・ブラウザ併用）
