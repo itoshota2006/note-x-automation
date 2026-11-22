@@ -4,7 +4,7 @@
   "schedule_jst": "19:45",
   "schedule_utc": "10:45",
   "schedule_pst": "02:45",
-  "batch_size": 2,
+  "batch_size": 3,
   "slots_per_run": [
     {
       "slot": "evening",
@@ -68,6 +68,28 @@
       "key": "na93d0615726c",
       "title": "BBS（Berg Balance Scale）とは？14項目の評価方法・採点基準と臨床で押さえたいポイント",
       "url": "https://note.com/benita_pt/n/na93d0615726c",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-22",
+      "slot": "evening",
+      "key": "nd63402d2c47d",
+      "title": "【BBS臨床実践編】低得点の原因をどう考える？7項目から導く臨床推論と具体的な治療アプローチ",
+      "url": "https://note.com/benita_pt/n/nd63402d2c47d",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-23",
+      "slot": "next_morning",
+      "key": "nc0c1f372623b",
+      "title": "腰椎圧迫骨折、画像と身体所見から何を考える？｜若手理学療法士が押さえたい評価の視点",
+      "url": "https://note.com/benita_pt/n/nc0c1f372623b",
       "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
       "email_sent": true,

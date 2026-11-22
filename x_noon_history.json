@@ -2,8 +2,30 @@
   "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック履歴台帳",
   "timezone": "Asia/Tokyo",
   "cycle": 1,
-  "used_source_ids": [],
-  "used_topics": [],
-  "history": [],
-  "reset_log": []
+  "used_source_ids": [
+    "51bf022c-b737-4f62-9a05-8d136d1f4110"
+  ],
+  "used_topics": [
+    "テキストを貼り付けました"
+  ],
+  "history": [
+    {
+      "date": "2026-11-23",
+      "slot": "next_noon",
+      "cycle": 1,
+      "source_id": "51bf022c-b737-4f62-9a05-8d136d1f4110",
+      "source_origin": "nlm",
+      "generation_method": "knowledge_base_curated",
+      "notebook_id": "ea001fcf-31ec-4cf9-9904-ca35bbb52c58",
+      "topic": "テキストを貼り付けました",
+      "domain": "運動器・NotebookLM文献",
+      "reference": "テキストを貼り付けました",
+      "post_preview": "ご指定の資料を含め、現在登録されている資料はすべてクレジットカードの還元率情報のみとなっております。\n理学療法や運動器の臨床知見が一切記載されていないため、資料の記載内容のみを根拠とした投稿文の作成はできません。関連資料の追加をご検討ください。",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    }
+  ],
+  "reset_log": [],
+  "last_updated_jst": "2026-11-22T20:26:28+09:00"
 }
