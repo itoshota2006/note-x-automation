@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Daily X Post & Summary Card Generator + Dual Gmail Sender (Evening + Next Morning)
+Daily X Post & Summary Card Generator + Gmail Sender (Evening + Next Morning + Next Noon Clinical Pearl)
 Works in both:
-- Method A: Antigravity local/cloud VM (`python3 /shared/user/.gemini/note-project/run_daily_x.py`)
+- Method A: Local Mac / Antigravity VM (`python3 run_daily_x.py`)
 - Method B: GitHub Actions (`python3 run_daily_x.py` in CI every day at 19:45 JST)
 """
 
+import argparse
 import json
 import os
 import shutil
@@ -19,8 +20,19 @@ from pathlib import Path
 JST = timezone(timedelta(hours=9))
 BASE_DIR = Path(__file__).resolve().parent
 STATE_FILE = BASE_DIR / "x_rotation_state.json"
+NOON_HISTORY_FILE = BASE_DIR / "x_noon_history.json"
 RECIPIENT = os.environ.get("RECIPIENT_EMAIL", "itoshota2006@gmail.com")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "")
+
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from noon_post_generator import (  # noqa: E402
+    generate_next_noon_post,
+    record_noon_history,
+    save_noon_history,
+    x_weighted_length,
+)
 
 # Full catalog of 20 published note.com articles with Junior-to-Mid-Career PT optimized posts & summary cards
 ARTICLES = [
@@ -1053,6 +1065,12 @@ def find_chrome() -> str:
         p = shutil.which(b)
         if p:
             return p
+    for mac_path in (
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ):
+        if Path(mac_path).exists():
+            return mac_path
     raise RuntimeError("Chrome binary not found")
 
 
@@ -1078,23 +1096,27 @@ def render_png(html_path: Path, png_path: Path) -> None:
     )
 
 
-def send_email(subject: str, body_path: Path, attachment_path: Path) -> str:
+def send_email(subject: str, body_path: Path, attachments: list[Path]) -> str:
     # 1. If running in Antigravity VM with `gmail` plugin CLI available, try it first
     gmail_cli = shutil.which("gmail")
     if gmail_cli and not os.environ.get("GITHUB_ACTIONS"):
+        file_args: list[str] = []
+        for att in attachments:
+            if att.exists():
+                file_args.extend(["--file", str(att)])
+        cmd_sub = "send-with-attachment" if file_args else "send"
         res = subprocess.run(
             [
                 gmail_cli,
                 "mutate",
-                "send-with-attachment",
+                cmd_sub,
                 "--to",
                 RECIPIENT,
                 "--subject",
                 subject,
                 "--body-file",
                 str(body_path),
-                "--file",
-                str(attachment_path),
+                *file_args,
             ],
             capture_output=True,
             text=True,
@@ -1113,8 +1135,7 @@ def send_email(subject: str, body_path: Path, attachment_path: Path) -> str:
                 subject,
                 "--body-file",
                 str(body_path),
-                "--file",
-                str(attachment_path),
+                *file_args,
             ],
             capture_output=True,
             text=True,
@@ -1129,18 +1150,63 @@ def send_email(subject: str, body_path: Path, attachment_path: Path) -> str:
     msg["To"] = RECIPIENT
     msg.set_content(body_path.read_text(encoding="utf-8"))
 
-    img_bytes = attachment_path.read_bytes()
-    msg.add_attachment(
-        img_bytes,
-        maintype="image",
-        subtype="png",
-        filename=attachment_path.name,
-    )
+    for att in attachments:
+        if not att.exists():
+            continue
+        img_bytes = att.read_bytes()
+        msg.add_attachment(
+            img_bytes,
+            maintype="image",
+            subtype="png",
+            filename=att.name,
+        )
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
         smtp.login(RECIPIENT, GMAIL_APP_PASSWORD)
         smtp.send_message(msg)
     return "sent_via_smtp_ssl"
+
+
+def build_daily_email_body(
+    *,
+    today_str: str,
+    tomorrow_str: str,
+    night_art: dict,
+    morning_art: dict,
+    noon_result,
+) -> str:
+    noon_cand = noon_result.candidate
+    noon_wlen = x_weighted_length(noon_result.post)
+    reset_notice = (
+        f"（※全ソース消化につき履歴を自動リセットし {noon_result.cycle} 周目に入りました）\n"
+        if noon_result.was_reset
+        else ""
+    )
+    ref_line = f"参考根拠：{noon_cand.reference}\n" if noon_cand.reference else ""
+
+    return (
+        f"毎日19:45 JST 自動生成X投稿まとめ（{today_str} 配信）\n"
+        "※今夜用・翌朝用の図解カードPNG 2枚を添付しています。翌日昼用は画像・URLなしの単体完結ポストです。\n\n"
+        "============================================================\n"
+        f"【夜用】（{today_str} 夜｜添付図解：x_card_night.png）\n"
+        f"対象記事：{night_art['title']}\n"
+        "============================================================\n"
+        f"{night_art['post']}\n\n"
+        "============================================================\n"
+        f"【翌朝用】（{tomorrow_str} 朝｜添付図解：x_card_morning.png）\n"
+        f"対象記事：{morning_art['title']}\n"
+        "============================================================\n"
+        f"{morning_art['post']}\n\n"
+        "============================================================\n"
+        f"【翌日 昼用（リンクなし・臨床知見）】（{tomorrow_str} 昼｜URL・宣伝なし・X単体完結）\n"
+        f"抽出元：{noon_result.source_origin_label}（{noon_result.cycle}周目 / source_id: {noon_cand.source_id}）\n"
+        f"トピック：{noon_cand.topic}\n"
+        f"{ref_line}"
+        f"文字数チェック：X換算 {noon_wlen}/280（全角約 {noon_wlen / 2:.1f} 字）\n"
+        f"{reset_notice}"
+        "============================================================\n"
+        f"{noon_result.post}\n"
+    )
 
 
 def select_next_two(state: dict) -> list[dict]:
@@ -1161,7 +1227,31 @@ def select_next_two(state: dict) -> list[dict]:
     return sorted_articles[:2]
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate daily X posts (Night + Next Morning + Next Noon clinical pearl) and send email."
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="メール送信および履歴JSONの保存をスキップし、生成結果のみ出力・確認する",
+    )
+    parser.add_argument(
+        "--skip-nlm",
+        action="store_true",
+        help="nlm CLIの実行をスキップし、リポジトリ内ナレッジベースから昼用投稿を生成する",
+    )
+    parser.add_argument(
+        "--skip-cards",
+        action="store_true",
+        help="ChromeによるPNG図解カードレンダリングをスキップする（ドライラン確認用）",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
+
     if STATE_FILE.exists():
         state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
     else:
@@ -1174,42 +1264,68 @@ def main() -> None:
     picked = select_next_two(state)
     night_art, morning_art = picked[0], picked[1]
 
+    night_post_path = BASE_DIR / "x_post_night.txt"
+    night_html_path = BASE_DIR / "x_card_night.html"
+    night_png_path = BASE_DIR / "x_card_night.png"
+
+    morning_post_path = BASE_DIR / "x_post_morning.txt"
+    morning_html_path = BASE_DIR / "x_card_morning.html"
+    morning_png_path = BASE_DIR / "x_card_morning.png"
+
+    noon_post_path = BASE_DIR / "x_post_noon.txt"
+    daily_mail_path = BASE_DIR / "x_mail_daily.txt"
+
     slots = [
-        (
-            "evening",
-            today_str,
-            "【X投稿用・今夜分】自動生成ポスト＆図解カード",
-            night_art,
-            BASE_DIR / "x_post_night.txt",
-            BASE_DIR / "x_card_night.html",
-            BASE_DIR / "x_card_night.png",
-        ),
-        (
-            "next_morning",
-            tomorrow_str,
-            "【X投稿用・翌朝分】自動生成ポスト＆図解カード",
-            morning_art,
-            BASE_DIR / "x_post_morning.txt",
-            BASE_DIR / "x_card_morning.html",
-            BASE_DIR / "x_card_morning.png",
-        ),
+        ("evening", today_str, night_art, night_post_path, night_html_path, night_png_path),
+        ("next_morning", tomorrow_str, morning_art, morning_post_path, morning_html_path, morning_png_path),
     ]
 
-    for slot_name, date_str, subject, art, post_path, html_path, png_path in slots:
+    for _slot_name, _date_str, art, post_path, html_path, png_path in slots:
         post_path.write_text(art["post"] + "\n", encoding="utf-8")
         html_path.write_text(build_card_html(art), encoding="utf-8")
-        render_png(html_path, png_path)
+        if not args.skip_cards:
+            render_png(html_path, png_path)
 
-        # If running inside Antigravity VM, mirror to ~/note-project as well
-        home_np = Path("/home/antigravity/note-project")
-        if home_np.exists() and home_np.resolve() != BASE_DIR.resolve():
-            (home_np / post_path.name).write_text(art["post"] + "\n", encoding="utf-8")
-            (home_np / html_path.name).write_text(html_path.read_text(encoding="utf-8"), encoding="utf-8")
-            (home_np / png_path.name).write_bytes(png_path.read_bytes())
+    # Generate Next Noon post (No URL / No Promotion / Standalone Clinical Pearl)
+    noon_result, noon_state = generate_next_noon_post(
+        BASE_DIR,
+        history_path=NOON_HISTORY_FILE,
+        skip_nlm=args.skip_nlm,
+    )
+    noon_post_path.write_text(noon_result.post + "\n", encoding="utf-8")
 
-        delivery_mode = send_email(subject, post_path, png_path)
-        print(f"[{slot_name}] {art['key']} | {art['title']} -> {delivery_mode}")
+    # Build combined daily email body containing 夜用 + 翌朝用 + 【翌日 昼用（リンクなし・臨床知見）】
+    email_subject = f"【X投稿用・夜／翌朝／翌日昼】自動生成ポスト＆図解カード（{today_str}）"
+    email_body = build_daily_email_body(
+        today_str=today_str,
+        tomorrow_str=tomorrow_str,
+        night_art=night_art,
+        morning_art=morning_art,
+        noon_result=noon_result,
+    )
+    daily_mail_path.write_text(email_body, encoding="utf-8")
 
+    if args.dry_run:
+        delivery_mode = "dry_run_skipped"
+        print("[DRY-RUN] Email sending and state persistence skipped.")
+        print("----- GENERATED EMAIL PREVIEW -----")
+        print(email_body)
+        print("-----------------------------------")
+        return
+
+    attachments = [p for p in (night_png_path, morning_png_path) if p.exists()]
+    delivery_mode = send_email(email_subject, daily_mail_path, attachments)
+
+    print(f"[evening] {night_art['key']} | {night_art['title']} -> {delivery_mode}")
+    print(f"[next_morning] {morning_art['key']} | {morning_art['title']} -> {delivery_mode}")
+    print(
+        f"[next_noon] {noon_result.candidate.source_id} (cycle {noon_result.cycle}) | "
+        f"{noon_result.candidate.topic} [{noon_result.generation_method}] -> {delivery_mode}"
+    )
+
+    # Update x_rotation_state.json (evening + next_morning)
+    state["batch_size"] = 3
+    for slot_name, date_str, art, post_path, _html_path, png_path in slots:
         state.setdefault("history", []).append(
             {
                 "date": date_str,
@@ -1223,14 +1339,37 @@ def main() -> None:
                 "delivery_mode": delivery_mode,
             }
         )
-
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    # Update x_noon_history.json (next_noon)
+    record_noon_history(
+        noon_state,
+        noon_result,
+        date_str=tomorrow_str,
+        post_file=str(noon_post_path),
+        email_sent=True,
+        delivery_mode=delivery_mode,
+    )
+    save_noon_history(NOON_HISTORY_FILE, noon_state)
+
+    # If running inside Antigravity VM, mirror generated files and state to ~/note-project
     home_np = Path("/home/antigravity/note-project")
     if home_np.exists() and home_np.resolve() != BASE_DIR.resolve():
-        (home_np / "x_rotation_state.json").write_text(
-            STATE_FILE.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
+        for fpath in (
+            night_post_path,
+            night_html_path,
+            morning_post_path,
+            morning_html_path,
+            noon_post_path,
+            daily_mail_path,
+            STATE_FILE,
+            NOON_HISTORY_FILE,
+        ):
+            if fpath.exists():
+                (home_np / fpath.name).write_text(fpath.read_text(encoding="utf-8"), encoding="utf-8")
+        for png in (night_png_path, morning_png_path):
+            if png.exists():
+                (home_np / png.name).write_bytes(png.read_bytes())
 
 
 if __name__ == "__main__":

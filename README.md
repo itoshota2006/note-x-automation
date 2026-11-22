@@ -7,7 +7,7 @@
 | ワークフロー | 実行スケジュール (JST) | スクリプト | 処理内容 |
 | :--- | :--- | :--- | :--- |
 | **Daily Note Draft Generator** (`.github/workflows/daily_note_draft.yml`) | 毎日 19:30 (`30 10 * * *` UTC) | `run_daily_note_draft.py` | `note-themes.txt` から未処理テーマを1件選定 → PubMed 一次文献検索 → `rules.md` / `past_articles.md` 準拠で記事執筆＆図解PNG 2枚生成 → `drafts/` 保存 → `itoshota2006@gmail.com` へメール送信 → 該当行に `[済]` 付与＆Push |
-| **Daily X Post & Summary Card** (`.github/workflows/daily_x.yml`) | 毎日 19:45 (`45 10 * * *` UTC) | `run_daily_x.py` | `x_rotation_state.json` に基づき今夜分・翌朝分の2記事を選定 → 140字ポスト＆図解カード生成 → 2通連続でメール送信 → 履歴更新＆Push |
+| **Daily X Post & Summary Card** (`.github/workflows/daily_x.yml`) | 毎日 19:45 (`45 10 * * *` UTC) | `run_daily_x.py` | `x_rotation_state.json` から夜用・翌朝用の2記事を選定＋図解カード生成、さらに `nlm` CLI（未認証時は `knowledge/*.md`）から既存note記事・テーマと重複しない翌日昼用（リンクなし・臨床知見）を1本生成 → 3枠まとめてメール送信 → `x_rotation_state.json` / `x_noon_history.json` 更新＆Push |
 
 ## 必要な GitHub Actions Secrets
 
@@ -75,3 +75,20 @@ Mac 上で `notebooklm-mcp-cli`（`nlm`）の初回ログイン（`nlm login --s
 
 - 出力物：`notebooklm_summary.md`（①臨床推論・②評価・③アプローチの3点要約）、`notebooklm_sources.txt`、`notebooklm_meta.json`、`--draft` 指定時は `draft_prompt.md` と `article_from_nlm.md`（環境変数 `GEMINI_API_KEY` / `OPENAI_API_KEY` があれば LLM API、未設定時は NotebookLM 自身でソース根拠限定執筆）。
 - 事前確認には `--dry-run` を付けられます。
+
+## 翌日昼用X投稿（リンクなし・臨床知見）の運用と NotebookLM 連携
+
+`run_daily_x.py` は毎日 19:45 JST のメールに、既存の「夜用」「翌朝用」と並べて **【翌日 昼用（リンクなし・臨床知見）】** を追加して送信します。
+
+- **抽出優先順位：**
+  1. 実行環境に `nlm` CLI があり認証済みの場合、NotebookLM のノートブックから文献ソースを直接ピックアップして解説文を作成します。
+  2. GitHub Actions 等で `nlm` 認証が利用できない場合は、リポジトリ内の `knowledge/*.md`（`knowledge/nlm_exported_kb.md` 優先 → `knowledge/noon_clinical_kb.md`）および `drafts/` 配下の未重複ソースへ自動でフォールバックします。
+- **被り防止＆自動2周目リセット：**
+  - `x_noon_history.json` に使用済みの `source_id`・トピックを記録し、過去の昼用投稿および `past_articles.md` / `note-themes.txt` と重複するトピックを自動除外します。
+  - すべての候補を使い切ると自動で履歴をリセットして 2 周目に入ります（`GEMINI_API_KEY` / `OPENAI_API_KEY` 設定時は 2 周目以降に別切り口で再生成します）。
+- **Macローカルの NotebookLM 知見を GitHub Actions へ同期するコマンド：**
+  ```bash
+  # NotebookLM から未登録ソースを抽出し knowledge/nlm_exported_kb.md へ書き出す
+  python3 scripts/export_nlm_knowledge.py --limit 5
+  ```
+  書き出し後に `git add knowledge/nlm_exported_kb.md && git commit && git push` すると、次回 19:45 JST の GitHub Actions 実行から自動で選定対象に含まれます。

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1600px;
+    height: 1040px;
+    background: #FFFFFF;
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    color: #1E293B;
+    padding: 36px 40px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header {
+    background: linear-gradient(135deg, #0F2350 0%, #1B3B7B 100%);
+    border-radius: 18px;
+    padding: 26px 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #FFFFFF;
+  }
+  .header-left .badge {
+    display: inline-block;
+    background: #2563EB;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 5px 16px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+    letter-spacing: 0.03em;
+  }
+  .header-left h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+  }
+  .header-right {
+    background: rgba(255, 255, 255, 0.11);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    border-radius: 14px;
+    padding: 14px 22px;
+    text-align: right;
+    min-width: 370px;
+  }
+  .header-right .refs {
+    font-size: 14px;
+    color: #CBD5E1;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .header-right .key {
+    font-size: 19px;
+    font-weight: 800;
+    color: #FFFFFF;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.06fr 1.04fr 0.95fr;
+    gap: 24px;
+    flex: 1;
+    margin: 22px 0 18px;
+  }
+  .card {
+    border: 2px solid #CBD5E1;
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #FFFFFF;
+  }
+  .card.navy-border { border-color: #1D3E7A; }
+  .card-head {
+    background: #334155;
+    color: #FFFFFF;
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card.navy-border .card-head { background: #163268; }
+  .card-head h2 { font-size: 21px; font-weight: 800; }
+  .card-head .tag {
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.18);
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  .card-body {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    gap: 14px;
+  }
+
+  .mini-box {
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid #CBD5E1;
+    background: #F8FAFC;
+  }
+  .mini-box.blue {
+    background: #EFF6FF;
+    border-color: #93C5FD;
+  }
+  .mini-box.warn {
+    background: #FEF2F2;
+    border-color: #FCA5A5;
+  }
+  .mini-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0F2350;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini-box.warn .mini-title { color: #B91C1C; }
+
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+    margin-top: 4px;
+  }
+  .comp-table th, .comp-table td {
+    border: 1px solid #CBD5E1;
+    padding: 8px 9px;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .comp-table th {
+    background: #E2E8F0;
+    color: #0F172A;
+    font-weight: 800;
+    font-size: 13.5px;
+  }
+  .up { color: #1D4ED8; font-weight: 800; }
+  .down { color: #B91C1C; font-weight: 800; }
+
+  ul.pts {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  ul.pts li {
+    padding-left: 18px;
+    position: relative;
+  }
+  ul.pts li::before {
+    content: "●";
+    color: #1D4ED8;
+    font-size: 10px;
+    position: absolute;
+    left: 0;
+    top: 4px;
+  }
+  .mini-box.warn ul.pts li::before { color: #DC2626; }
+
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px dashed #CBD5E1;
+    font-size: 14.5px;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-val {
+    font-size: 17px;
+    font-weight: 800;
+    color: #163268;
+    white-space: nowrap;
+  }
+  .metric-val.red { color: #B91C1C; }
+
+  .callout {
+    background: #E2E8F0;
+    border-left: 5px solid #163268;
+    border-radius: 10px;
+    padding: 12px 15px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #0F172A;
+  }
+  .callout strong { color: #0F2350; }
+
+  .footer {
+    background: #0F172A;
+    color: #FFFFFF;
+    border-radius: 14px;
+    padding: 15px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer .rule {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .footer .brand {
+    font-size: 14.5px;
+    color: #CBD5E1;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="badge">図1｜座位の重心移動：筋電図・床反力データの整理</div>
+      <h1>「座面・動きの起点・課題・足部」で変わる体幹筋活動と代償</h1>
+    </div>
+    <div class="header-right">
+      <div class="refs">Haas 2022 / Tan 2024 / O'Sullivan 2013 / Thornton 2010</div>
+      <div class="key">大きく動かす・揺らす＝体幹強化ではない</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Column 1 -->
+    <div class="card navy-border">
+      <div class="card-head">
+        <h2>① 座面 × 動きの起点</h2>
+        <span class="tag">脳卒中で反応が逆転</span>
+      </div>
+      <div class="card-body">
+        <div class="mini-box blue">
+          <div class="mini-title">▶ 可動座面での体幹側屈（Haas 2022, n=28）</div>
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>側屈の起点</th>
+                <th>健常者 (n=15)</th>
+                <th>脳卒中 (n=13)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>胸郭主導</strong><br>(肩甲帯から側屈)</td>
+                <td><span class="down">低下</span><br>(OE高活動)</td>
+                <td><span class="up">上昇 (2.1–2.4倍)</span><br>感覚処理負荷↑</td>
+              </tr>
+              <tr>
+                <td><strong>骨盤主導</strong><br>(片側骨盤挙上)</td>
+                <td><span class="up">上昇 (3.3–3.8倍)</span><br>安定面は2.5倍</td>
+                <td><span class="down">低下 (1.8–2.6倍)</span><br>動きを抑制傾向</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mini-box warn">
+          <div class="mini-title">▶ 不安定座面（動的座位）の注意点（SR）</div>
+          <ul class="pts">
+            <li><strong>O'Sullivan 2013（抄録確認）：</strong>7研究中5研究で静的座位と<strong>体幹筋活動に差なし</strong></li>
+            <li>差があった2研究は<strong>不快感・筋疲労・脊柱短縮</strong>が増加（背もたれ有無の関与も指摘）</li>
+          </ul>
+        </div>
+
+        <div class="callout">
+          <strong>臨床での見方：</strong>脳卒中患者では外腹斜筋（OE）が背部筋より低活動になりやすく、健常者と同じ感覚で不安定面を使うと狙いと逆の反応が起きうる。
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2 -->
+    <div class="card navy-border">
+      <div class="card-head">
+        <h2>② 安定座面での課題差</h2>
+        <span class="tag">Tan 2024, 脳卒中 n=11</span>
+      </div>
+      <div class="card-body">
+        <div class="mini-box blue">
+          <div class="mini-title">▶ 体幹回旋運動（体幹筋の再教育向き）</div>
+          <div class="metric-row">
+            <span>左 脊柱起立筋（ES）活動</span>
+            <span class="metric-val">43.25 ± 19.57 %RVC</span>
+          </div>
+          <div class="metric-row">
+            <span>屈曲伸展 / 矢状面傾斜との差</span>
+            <span class="metric-val">p = 0.011 / 0.017</span>
+          </div>
+          <div class="metric-row">
+            <span>下肢代償（垂直GRF変化量）</span>
+            <span class="metric-val">1.06 ± 1.54 %（最小）</span>
+          </div>
+        </div>
+
+        <div class="mini-box warn">
+          <div class="mini-title">▶ リーチ課題（下肢協調・動的姿勢制御向き）</div>
+          <div class="metric-row">
+            <span>下肢代償（垂直GRF変化量）</span>
+            <span class="metric-val red">-5.85 ± 2.89 %（最大）</span>
+          </div>
+          <div class="metric-row">
+            <span>平均CoP速度（左リーチ）</span>
+            <span class="metric-val red">8.19 ± 4.01 cm/s（最大）</span>
+          </div>
+          <ul class="pts" style="margin-top:8px;">
+            <li>上肢の加速による外乱に対し、<strong>足部への荷重移動と体幹の協調</strong>が強く求められる</li>
+          </ul>
+        </div>
+
+        <div class="callout">
+          <strong>限界の注意：</strong>n=11のパイロット研究かつESのみ計測（腹筋群未評価・即時効果のみ）。課題の力学特性を見極める目安として活用する。
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3 -->
+    <div class="card">
+      <div class="card-head">
+        <h2>③ 足部条件と背景鑑別</h2>
+        <span class="tag">筋力だけで決めない</span>
+      </div>
+      <div class="card-body">
+        <div class="mini-box">
+          <div class="mini-title">▶ 支持基底面（BOS）と足部（OSS因子分析）</div>
+          <ul class="pts">
+            <li><strong>2因子で分散の77.8%を説明：</strong>基底面内（Within BOS）vs 基底面外（Outside BOS）（Thornton 2010）</li>
+            <li><strong>足部非接地：</strong>BOS縮小＋足底体性感覚減 → <strong>安定性限界（LOS）へ早期到達</strong></li>
+          </ul>
+        </div>
+
+        <div class="mini-box">
+          <div class="mini-title">▶ 筋力以外に鑑別すべき背景因子</div>
+          <ul class="pts">
+            <li><strong>固有感覚（位置覚）障害：</strong>体幹位置再建誤差 <strong>5.9° vs 健常 2.1°</strong>（p &lt; 0.001, Huseyinsinoglu 2022）</li>
+            <li><strong>垂直認知・定位障害：</strong>主観的体幹垂直位のズレ（TIS藤原版）、プッシャー現象</li>
+            <li><strong>非姿勢筋・下肢代償：</strong>SCIでの大胸筋・僧帽筋・広背筋の同時収縮（Bjerkefors 2009）、STS着座相の麻痺側背筋延長（Cravero 2026）</li>
+          </ul>
+        </div>
+
+        <div class="callout">
+          <strong>相関と因果の区別：</strong>TISと転倒リスクの関連は麻痺側四肢筋力（p=0.012）等で修飾される。体幹は「基盤」だが単独因子ではない。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="rule">鉄則：評価・練習ともに「座面条件・足部接地の有無・動きの起点・下肢代償」の4点をセットで確認する</div>
+    <div class="brand">理学療法士向け臨床整理 | @benita_pt</div>
+  </div>
+</body>
+</html>

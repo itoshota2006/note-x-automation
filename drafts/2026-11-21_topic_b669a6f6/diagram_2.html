@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1600px;
+    height: 1040px;
+    background: #FFFFFF;
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    color: #1E293B;
+    padding: 36px 40px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header {
+    background: linear-gradient(135deg, #0F2350 0%, #1B3B7B 100%);
+    border-radius: 18px;
+    padding: 25px 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #FFFFFF;
+  }
+  .header-left .badge {
+    display: inline-block;
+    background: #2563EB;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 5px 16px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .header-left h1 {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .header-right {
+    background: rgba(255, 255, 255, 0.11);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    border-radius: 14px;
+    padding: 13px 20px;
+    text-align: right;
+    min-width: 440px;
+  }
+  .header-right .refs {
+    font-size: 12.5px;
+    color: #CBD5E1;
+    margin-bottom: 6px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .header-right .key {
+    font-size: 18.5px;
+    font-weight: 800;
+    color: #FFFFFF;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    flex: 1;
+    margin: 20px 0 16px;
+  }
+  .col {
+    border: 2px solid #CBD5E1;
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #FFFFFF;
+  }
+  .col.alert-col { border-color: #B91C1C; }
+  .col-head {
+    background: #1B3B7B;
+    color: #FFFFFF;
+    padding: 15px 18px;
+  }
+  .col.alert-col .col-head { background: #B91C1C; }
+  .col-head .step {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0.85;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .col-head h2 {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+  .col-body {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    gap: 12px;
+  }
+  .pill {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+    padding: 7px 10px;
+    border-radius: 10px;
+  }
+  .col.alert-col .pill {
+    background: #FEF2F2;
+    color: #B91C1C;
+  }
+  ul.pts {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  ul.pts li {
+    padding-left: 16px;
+    position: relative;
+  }
+  ul.pts li::before {
+    content: "▸";
+    color: #1D4ED8;
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  .col.alert-col ul.pts li::before { color: #B91C1C; }
+
+  .note-box {
+    background: #F8FAFC;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 13.5px;
+    line-height: 1.48;
+    color: #334155;
+  }
+  .col.alert-col .note-box {
+    background: #FEF2F2;
+    border-color: #FCA5A5;
+    color: #7F1D1D;
+  }
+  .note-box strong { color: #0F172A; }
+  .col.alert-col .note-box strong { color: #991B1B; }
+
+  .bottom-strip {
+    background: #EFF6FF;
+    border: 1.8px solid #93C5FD;
+    border-radius: 14px;
+    padding: 15px 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-bottom: 10px;
+  }
+  .b-item h3 {
+    font-size: 15.5px;
+    font-weight: 800;
+    color: #163268;
+    margin-bottom: 5px;
+  }
+  .b-item p {
+    font-size: 13.8px;
+    line-height: 1.48;
+    color: #1E293B;
+  }
+
+  .footnote {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #475569;
+    padding: 0 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="badge">図2｜座位バランス評価3尺度の使い分けと臨床解釈マップ</div>
+      <h1>重症度・評価目的に応じた尺度選択と MDC / MCID の基準</h1>
+    </div>
+    <div class="header-right">
+      <div class="refs">Thornton 2010 / Ishiwatari 2023 / Eguchi 2026 / Gorman 2014 / Alzyoud 2022</div>
+      <div class="key">対象集団と「天井効果」を必ず確認する</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- OSS -->
+    <div class="col">
+      <div class="col-head">
+        <div class="step">SCALE 01｜急性期重症・回復遅延</div>
+        <h2>OSS<br>(Ottawa Sitting Scale)</h2>
+      </div>
+      <div class="col-body">
+        <div>
+          <div class="pill">足部接地 / 非接地を分離評価</div>
+          <ul class="pts" style="margin-top:12px;">
+            <li><strong>検証対象：</strong>急性期回復遅延患者 n=71（脳卒中・神経疾患・高齢者）</li>
+            <li><strong>構成：</strong>6課題（静的・12/25cm移動・回旋・殿部挙上・殿部歩行）×2条件＝12項目（48点）</li>
+            <li><strong>信頼性：</strong>検者内 ICC 0.994／検者間 ICC 0.967–0.989</li>
+            <li><strong>MDC / MCID：</strong>ソース上未確認</li>
+          </ul>
+        </div>
+        <div class="note-box">
+          <strong>切り替え目安：</strong>床効果は極めて少ない一方、<strong>BBS 約10点以上</strong>で天井効果が出現。立位が進んだらBBS等へ移行する。
+        </div>
+      </div>
+    </div>
+
+    <!-- TIS Fujiwara -->
+    <div class="col">
+      <div class="col-head">
+        <div class="step">SCALE 02｜急性期脳卒中の経時追跡</div>
+        <h2>TIS（藤原版）<br>7項目・21点満点</h2>
+      </div>
+      <div class="col-body">
+        <div>
+          <div class="pill">急性期で天井効果 0%・反応性高</div>
+          <ul class="pts" style="margin-top:12px;">
+            <li><strong>検証対象：</strong>急性期脳卒中 n=55（入院7日〜退院時, Ishiwatari 2023）</li>
+            <li><strong>構成：</strong>主観的体幹垂直位、腹筋力、患/健側回旋筋力、患/健側立ち直り反射など</li>
+            <li><strong>反応性：</strong>ES 0.51／<strong>SRM 1.42</strong>（TCTは退院時52.7%が天井効果）</li>
+            <li><strong>MCID：</strong><strong>3.0点</strong>（FIM-M ≧17改善基準、感度62.5%・特異度67.7%・AUC 0.71）</li>
+          </ul>
+        </div>
+        <div class="note-box">
+          <strong>研究の限界：</strong>単施設・単一評価者であり、患者本人の主観的改善感（GROC等）ではなくFIM-Mをアンカーとした点に留意。
+        </div>
+      </div>
+    </div>
+
+    <!-- FIST -->
+    <div class="col">
+      <div class="col-head">
+        <div class="step">SCALE 03｜静的・予測・反応の包括評価</div>
+        <h2>FIST<br>(Function in Sitting Test)</h2>
+      </div>
+      <div class="col-body">
+        <div>
+          <div class="pill">機能的課題と側方外乱を網羅</div>
+          <ul class="pts" style="margin-top:12px;">
+            <li><strong>構成：</strong>14項目・各0–4点（56点満点※）。静的・リーチ・床拾い・殿部移動・側方ナッジ</li>
+            <li><strong>回復期入院 (n=125)：</strong>MDC 5.5点／<strong>MCID &gt; 6.5点</strong>／入院5日以内 <strong>&lt; 42点</strong>で自宅退院困難を示唆</li>
+            <li><strong>SNF脳卒中 (n=40)：</strong>MDC90 3.9点（MDC95 4.63点）／<strong>MCID 3.5–4.8点</strong>（4点変化が目安）</li>
+            <li><strong>FIST-SCI (n=38)：</strong>MDC 3.5点／<strong>≧ 45点</strong>で移乗自立（感度92%・特異度92%）</li>
+          </ul>
+        </div>
+        <div class="note-box">
+          <strong>注意点：</strong>立位・歩行自立例や回復期退院時に天井効果が出やすい。対象集団（回復期 vs SNF vs SCI）で基準値を使い分ける。
+        </div>
+      </div>
+    </div>
+
+    <!-- TIS Verheyden & COSMIN caution -->
+    <div class="col alert-col">
+      <div class="col-head">
+        <div class="step">CAUTION｜2026年最新エビデンスの視点</div>
+        <h2>TIS（Verheyden版）と<br>点数解釈の落とし穴</h2>
+      </div>
+      <div class="col-body">
+        <div>
+          <div class="pill">COSMIN SR（Eguchi 2026）の警鐘</div>
+          <ul class="pts" style="margin-top:12px;">
+            <li><strong>評価対象：</strong>静的座位・選択的側屈・上下分離回旋（<strong>機能障害レベル</strong>）。リーチや移乗等の機能課題は直接評価しない</li>
+            <li><strong>従来報告：</strong>ICC 0.96–0.99、BI (r=0.86)・PASS (r=0.84)と高相関</li>
+            <li><strong>最新COSMIN SR（13研究・抄録確認）：</strong>プール化ICC 0.98・α 0.88だが、修正GRADE確実性は<strong>「低〜極めて低」</strong></li>
+          </ul>
+        </div>
+        <div class="note-box">
+          <strong>臨床での鉄則：</strong>どの尺度も万能ではない。合計点だけで判断せず、<strong>動作の質・代償・位置覚・下肢機能</strong>を必ず併記して推論する。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-strip">
+    <div class="b-item">
+      <h3>▶ ① 測定条件の統一を徹底する</h3>
+      <p>座面（背もたれ・肘掛けなし）、股・膝90°、大腿支持割合、<strong>足部接地の有無</strong>、上肢初期位置をカルテへ記録し再評価時のブレを防ぐ。</p>
+    </div>
+    <div class="b-item">
+      <h3>▶ ② 統計的有意差とMDC/MCIDを区別する</h3>
+      <p>点数が2〜3点伸びても、対象集団のMDC未満なら誤差範囲の可能性がある。研究の対象病期・施設環境が担当患者と近いか確認する。</p>
+    </div>
+    <div class="b-item">
+      <h3>▶ ③ 相関を因果と取り違えない</h3>
+      <p>座位スコアは立位・歩行の重要な「基盤」だが、歩行自立群の6か月後には初期TISとの相関が弱まる報告（Kim 2015）もあり多因子で診る。</p>
+    </div>
+  </div>
+
+  <div class="footnote">
+    <div>※FISTは一部DBに0–54点表記の揺れあり（原著Gorman 2010採点表で確認）。Eguchi 2026・Gorman 2010/2014・Alzyoud 2022・Kim 2015は抄録/DB要約確認。</div>
+    <div>理学療法士向け臨床整理 | @benita_pt</div>
+  </div>
+</body>
+</html>

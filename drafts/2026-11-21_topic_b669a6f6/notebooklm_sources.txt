@@ -1,0 +1,268 @@
+[
+  {
+    "id": "5b318549-5aa2-4caa-8f24-e6ef14816602",
+    "title": "(PDF) Intra- and inter-rater reliability and validity of the Ottawa Sitting Scale: A new tool to characterise sitting balance in acute care patients - ResearchGate",
+    "type": "web_page",
+    "url": "https://www.researchgate.net/publication/45387518_Intra-_and_inter-rater_reliability_and_validity_of_the_Ottawa_Sitting_Scale_A_new_tool_to_characterise_sitting_balance_in_acute_care_patients",
+    "status": 2
+  },
+  {
+    "id": "03da2d76-cbc1-4ea6-a5d4-1474471a32aa",
+    "title": "1. Upper Extremity Function - General Principles and Therapies",
+    "type": "web_page",
+    "url": "https://www.strokebestpractices.ca/recommendations/stroke-rehabilitation-delivery/1-initial-stroke-rehabilitation-screening-and-assessment",
+    "status": 2
+  },
+  {
+    "id": "51db2099-a111-4040-a97f-fb3275f5848e",
+    "title": "A systematic review of adults' sitting balance assessments in neurological and neuromuscular conditions - PMC",
+    "type": "web_page",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8015498/",
+    "status": 2
+  },
+  {
+    "id": "f3fb6ddf-db4d-422a-a4df-e0c8959356d8",
+    "title": "Balance Training with Weight Shift-Triggered Electrical Stimulation for Stroke Patients: A Randomized Controlled Trial - MDPI",
+    "type": "web_page",
+    "url": "https://www.mdpi.com/2076-3425/13/2/225",
+    "status": 2
+  },
+  {
+    "id": "6e4c3cdf-2690-4b62-b641-2f49154ba36e",
+    "title": "Body weight–supported sitting training after stroke: A pilot study of electromyographic changes in trunk symmetry and unsupported sitting in eight patients - University of Fukui",
+    "type": "web_page",
+    "url": "https://pure.flib.u-fukui.ac.jp/en/publications/body-weightsupported-sitting-training-after-stroke-a-pilot-study-/",
+    "status": 2
+  },
+  {
+    "id": "58d5eb52-1cbd-4618-bd3f-c9165060e2c9",
+    "title": "Clinical Practice Guideline to Improve Locomotor Function Following Chronic Stroke, Incomplete Spinal Cord Injury, and Brain Injury | APTA",
+    "type": "web_page",
+    "url": "https://www.apta.org/patient-care/evidence-based-practice-resources/cpgs/clinical-practice-guideline-to-improve-locomotor-function-following-chronic-stroke-incomplete-spinal-cord-injury-and-brain-injury",
+    "status": 2
+  },
+  {
+    "id": "86bb57c8-a59f-49ae-8c1d-899993362148",
+    "title": "Don't Just Sit There: Evidence-Based Sitting Balance Examination & Intervention",
+    "type": "pdf",
+    "url": "https://cdn.ymaws.com/www.aptaacutecare.org/resource/resmgr/Don't_Just_Sit_There.pdf",
+    "status": 2
+  },
+  {
+    "id": "7d9889c4-6688-4a80-bd85-c21b9e536d81",
+    "title": "Effects of Stable-Sitting Trunk Exercises on Trunk Muscle Activation and Postural Control in Stroke Survivors: A Pilot Study - Medicine and Health UKM",
+    "type": "pdf",
+    "url": "https://www.medicineandhealthukm.com/sites/default/files/article/2024/12_mh_2024_0007_pdf_18517.pdf",
+    "status": 2
+  },
+  {
+    "id": "b7d7c5e0-21f3-46d0-b66b-bddc8442be35",
+    "title": "Effects of Weight-shifting Exercise Combined with Transcutaneous Electrical Nerve Stimulation on Muscle Activity and Trunk Control - Ovid",
+    "type": "web_page",
+    "url": "https://www.ovid.com/journals/octin/pdf/10.1002/oti.1446~effects-of-weight-shifting-exercise-combined-with",
+    "status": 2
+  },
+  {
+    "id": "2f6fe927-425a-42c8-a3e8-5ac8b13529db",
+    "title": "Function in Sitting Test (FIST) | Samuel Merritt University",
+    "type": "web_page",
+    "url": "https://www.samuelmerritt.edu/fist",
+    "status": 2
+  },
+  {
+    "id": "c17d30a4-ae42-4643-89b3-dc1c1d8ba7ea",
+    "title": "Function in Sitting Test (FIST): Complete Clinical Guide 2026 - SPRY",
+    "type": "web_page",
+    "url": "https://www.spryhealth.ai/fot/function-in-sitting-test",
+    "status": 2
+  },
+  {
+    "id": "3e34cc2b-0784-4373-81d5-5dacdae1729f",
+    "title": "Function in Sitting Test - Spinal Cord Injury (FIST-SCI) - SCIRE Professional",
+    "type": "web_page",
+    "url": "https://scireproject.com/outcome/function-in-sitting-test-spinal-cord-injury-fist-sci/",
+    "status": 2
+  },
+  {
+    "id": "1d681dc9-8170-4303-a7ce-4a60b7d51ca4",
+    "title": "Function in Sitting Test | RehabMeasures Database - Shirley Ryan AbilityLab",
+    "type": "web_page",
+    "url": "https://www.sralab.org/rehabilitation-measures/function-sitting-test",
+    "status": 2
+  },
+  {
+    "id": "7f7323e5-7b05-47c5-beea-f2cc3a3c0c6d",
+    "title": "How Robotic Rehabilitation Works: Legs, Arms and Balance - Acibadem Hospitals Group",
+    "type": "web_page",
+    "url": "https://acibademinternational.com/blog/what-a-rehabilitation-robot-actually-does-guided-repetition-for-legs-arms-and-balance/",
+    "status": 2
+  },
+  {
+    "id": "906b6616-7266-4cab-9252-1af30028166f",
+    "title": "Indicators of sitting balance ability and its association with fall risk in early stroke patients - Neurology Asia",
+    "type": "pdf",
+    "url": "https://www.neurology-asia.org/articles/neuroasia-2022-27(2)-281.pdf",
+    "status": 2
+  },
+  {
+    "id": "311eb7ab-9845-494c-9b82-fa7eda9790ef",
+    "title": "Intra- and inter-rater reliability and validity of the Ottawa Sitting Scale: a new tool to characterise sitting balance in acute care patients - PubMed",
+    "type": "web_page",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/20662547/",
+    "status": 2
+  },
+  {
+    "id": "3ba1c65d-3ba3-4811-acd8-39aca6597151",
+    "title": "Minimal Clinically Important Difference for Postural Assessment Scale for Stroke Patients (PASS) and Trunk Impairment Scale (TIS) in Persons With Stroke | Request PDF - ResearchGate",
+    "type": "web_page",
+    "url": "https://www.researchgate.net/publication/393469104_Minimal_Clinically_Important_Difference_for_Postural_Assessment_Scale_for_Stroke_Patients_PASS_and_Trunk_Impairment_Scale_TIS_in_Persons_with_Stroke",
+    "status": 2
+  },
+  {
+    "id": "1b9e45e2-93b2-4447-bb65-f8779cb910de",
+    "title": "Minimal Clinically Important Difference of Berg Balance Scale scores in people with acute stroke",
+    "type": "web_page",
+    "url": "https://www.jptrs.org/journal/view.html?doi=10.14474/ptrs.2018.7.3.102",
+    "status": 2
+  },
+  {
+    "id": "d0ea8b56-37d0-4313-8de2-8926265b40f1",
+    "title": "Postural Assessment Scale for Stroke | RehabMeasures Database - Shirley Ryan AbilityLab",
+    "type": "web_page",
+    "url": "https://www.sralab.org/rehabilitation-measures/postural-assessment-scale-stroke",
+    "status": 2
+  },
+  {
+    "id": "e44b4fd8-9d80-44eb-9aaf-83e1d70f7852",
+    "title": "Reliability of EMG measurements for trunk muscles during maximal and sub-maximal voluntary isometric contractions in healthy controls and CLBP patients - PubMed",
+    "type": "web_page",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/15094147/",
+    "status": 2
+  },
+  {
+    "id": "b1afa851-4890-4fcb-863c-c4615f6b9baa",
+    "title": "Responsiveness, minimal detectable change, and minimal clinically important difference of the sitting balance scale and function in sitting test in people with stroke - PubMed",
+    "type": "web_page",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/32401095/",
+    "status": 2
+  },
+  {
+    "id": "6a6d9587-56cc-4d91-a202-4d2509740bc1",
+    "title": "Responsiveness, minimal detectable change, and minimal clinically important difference of the sitting balance scale and function in sitting test in people with stroke | Request PDF - ResearchGate",
+    "type": "web_page",
+    "url": "https://www.researchgate.net/publication/341360295_Responsiveness_minimal_detectable_change_and_minimal_clinically_important_difference_of_the_sitting_balance_scale_and_function_in_sitting_test_in_people_with_stroke",
+    "status": 2
+  },
+  {
+    "id": "2e6537e2-ac71-454c-83c6-8cf49ba331cb",
+    "title": "Role of Trunk Rehabilitation on Trunk Control, Balance and Gait in Patients with Chronic Stroke: A Pre-Post Design - SciRP.org",
+    "type": "web_page",
+    "url": "https://www.scirp.net/journal/paperinformation?paperid=5495",
+    "status": 2
+  },
+  {
+    "id": "cea52a41-bec1-4ec2-adea-fa052810b4a2",
+    "title": "Side-Dependent Trunk Muscle Modulation During Sit-to-Stand After Stroke: An Exploratory EMG and Kinematic Study - MDPI",
+    "type": "web_page",
+    "url": "https://www.mdpi.com/1424-8220/26/8/2353",
+    "status": 2
+  },
+  {
+    "id": "72d3f1cd-789c-4dd7-9b5c-040b7b2d702f",
+    "title": "Sitting and Standing Balance Following Spinal Cord Injury - SCIRE Professional",
+    "type": "pdf",
+    "url": "https://scireproject.com/wp-content/uploads/2025/06/Sitting-and-Standing-Balance-Following-SCI-chapter.pdf",
+    "status": 2
+  },
+  {
+    "id": "4f2e1eb4-1a22-43d4-96c1-517997782eac",
+    "title": "Study of the Responsiveness and Minimal Clinically Important Difference of the Trunk Impairment Scale in Patients With Acute Stroke - PMC",
+    "type": "web_page",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10664440/",
+    "status": 2
+  },
+  {
+    "id": "e359a50c-9da2-4700-a6b7-e88cdb3e3594",
+    "title": "Surface electromyographic activity of trunk muscles during trunk control exercises for people after stroke; effect of a mobile and stable seat for rehabilitation - PMC",
+    "type": "web_page",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9337656/",
+    "status": 2
+  },
+  {
+    "id": "4bb345e1-f5ca-4c3f-8ac4-65174bd616ae",
+    "title": "Surface electromyographic activity of trunk muscles during trunk control exercises for people after stroke; effect of a mobile and stable seat for rehabilitation - ResearchGate",
+    "type": "web_page",
+    "url": "https://www.researchgate.net/publication/362357163_Surface_electromyographic_activity_of_trunk_muscles_during_trunk_control_exercises_for_people_after_stroke_effect_of_a_mobile_and_stable_seat_for_rehabilitation",
+    "status": 2
+  },
+  {
+    "id": "6b5e9324-2f76-4adb-a21b-7281b74ddbdc",
+    "title": "The effect of dynamic sitting on trunk muscle activation: a systematic review - PubMed",
+    "type": "web_page",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/23369370/",
+    "status": 2
+  },
+  {
+    "id": "0432cb2c-bb32-4b10-9306-1866b3f7307a",
+    "title": "Trunk Muscle Activation Patterns During Standing Turns in Patients With Stroke: An Electromyographic Analysis - Frontiers",
+    "type": "web_page",
+    "url": "https://www.frontiersin.org/journals/neurology/articles/10.3389/fneur.2021.769975/full",
+    "status": 2
+  },
+  {
+    "id": "628dcf1d-08a3-4fc6-89df-32ba5a766a7a",
+    "title": "Trunk Muscle Activation Patterns During Standing Turns in Patients With Stroke: An Electromyographic Analysis - PMC",
+    "type": "web_page",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8631775/",
+    "status": 2
+  },
+  {
+    "id": "afe4a6b9-8cf1-4296-a68f-6b820d280509",
+    "title": "Trunk Muscle Activity During Seated Strength Exercise With Resistance Wheeled Training Equipment in - Journal of Chiropractic Medicine",
+    "type": "web_page",
+    "url": "https://jcm.kglmeridian.com/view/journals/jcm/24/1-4/article-p62.xml",
+    "status": 2
+  },
+  {
+    "id": "41747c0a-7109-4b5b-a238-0888ca484c85",
+    "title": "Trunk kinematics during seated functional activities in individuals with spinal cord injury: a systematic review and meta-analysis - University of Birmingham Research Portal",
+    "type": "web_page",
+    "url": "https://research.birmingham.ac.uk/en/publications/trunk-kinematics-during-seated-functional-activities-in-individua/",
+    "status": 2
+  },
+  {
+    "id": "afe90340-5676-4f7e-a753-e8a98ba3b978",
+    "title": "Trunk muscle activation in a person with clinically complete thoracic spinal cord injury - HTML",
+    "type": "web_page",
+    "url": "https://www.medicaljournals.se/jrm/content/html/10.2340/16501977-0336",
+    "status": 2
+  },
+  {
+    "id": "15fd2946-63d2-4d3c-886d-48d33c25cc16",
+    "title": "Updated APTA Clinical Summary on Stroke Features Latest Information for Practice",
+    "type": "web_page",
+    "url": "https://www.apta.org/article/2024/05/10/updated-clinical-summary-stroke-features-latest-information-for-practice",
+    "status": 2
+  },
+  {
+    "id": "5a2eea8c-1653-4e59-a3b7-8138b258ca40",
+    "title": "https://escholarship.org/content/qt93n4m7gc/qt93n4m7gc.pdf",
+    "type": "web_page",
+    "url": "https://escholarship.org/content/qt93n4m7gc/qt93n4m7gc.pdf",
+    "status": 3
+  },
+  {
+    "id": "ae2fc606-29c3-485b-b9df-377e92dbfeda",
+    "title": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5857444/",
+    "type": "web_page",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5857444/",
+    "status": 3
+  },
+  {
+    "id": "9f673fc2-3623-4754-b280-f7c3daeb8512",
+    "title": "【2026年版】TIS（トランクインペアメントスケール）完全解説｜採点基準・評価方法・カットオフ値を網羅 – STROKE LAB 東京/大阪 自費リハビリ | 脳卒中/神経系",
+    "type": "web_page",
+    "url": "https://www.stroke-lab.com/speciality/21001",
+    "status": 2
+  }
+]
