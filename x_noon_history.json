@@ -2,8 +2,12 @@
   "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック履歴台帳",
   "timezone": "Asia/Tokyo",
   "cycle": 1,
-  "used_source_ids": [],
-  "used_topics": [],
+  "used_source_ids": [
+    "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff"
+  ],
+  "used_topics": [
+    "歩行テストにおける測定条件と中止基準の統一"
+  ],
   "excluded_source_ids": [
     "51bf022c-b737-4f62-9a05-8d136d1f4110",
     "7db23147-b1b0-40db-92af-4f22534d8052",
@@ -18,6 +22,24 @@
     "Untitled notebook",
     "Pasted text"
   ],
-  "history": [],
-  "reset_log": []
+  "history": [
+    {
+      "date": "2026-11-24",
+      "slot": "next_noon",
+      "cycle": 1,
+      "source_id": "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff",
+      "source_origin": "nlm_spinoff",
+      "generation_method": "knowledge_base_curated",
+      "notebook_id": "865201ce-82a7-4c5f-979c-50b6d052e6fb",
+      "topic": "歩行テストにおける測定条件と中止基準の統一",
+      "domain": "運動器・NotebookLMスピンオフ",
+      "reference": "腰部脊柱管狭窄症（LSS）の歩行・リハビリテーション文献レビュー.pdf",
+      "post_preview": "狭窄症の歩行評価は、歩行路やトレッドミルの傾斜・速度、上限時間、補助具、痛みに伴う中止基準を揃えて記録することが重要です。測定条件が異なると経時的な変化を正しく追えません。介入前後の比較では可能な限り同じ条件を設定し、評価のブレを防ぎましょう。",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    }
+  ],
+  "reset_log": [],
+  "last_updated_jst": "2026-11-23T20:32:03+09:00"
 }
