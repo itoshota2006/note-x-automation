@@ -102,6 +102,28 @@
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
       "email_sent": true,
       "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-23",
+      "slot": "evening",
+      "key": "nca0f8968a0a9",
+      "title": "腰椎圧迫骨折の術後・保存療法、評価結果から運動療法をどう考える？｜理学療法士のための臨床推論と介入の組み立て方",
+      "url": "https://note.com/benita_pt/n/nca0f8968a0a9",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-24",
+      "slot": "next_morning",
+      "key": "n56af6f20b16d",
+      "title": "【大腿骨頸部骨折術後リハ】股関節ROM制限をどう考える？測定値から制限因子を読み解く評価の基本",
+      "url": "https://note.com/benita_pt/n/n56af6f20b16d",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ]
 }
