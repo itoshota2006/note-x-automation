@@ -29,9 +29,18 @@ if str(BASE_DIR) not in sys.path:
 
 from noon_post_generator import (  # noqa: E402
     generate_next_noon_post,
+    load_noon_history,
     record_noon_history,
     save_noon_history,
     x_weighted_length,
+)
+from x_card_renderer import (  # noqa: E402
+    LAYOUT_LABELS,
+    PALETTES,
+    VALID_LAYOUT_IDS,
+    build_x_card_spec_from_article,
+    generate_x_card_files,
+    get_recent_layout_ids,
 )
 
 # Full catalog of 20 published note.com articles with Junior-to-Mid-Career PT optimized posts & summary cards
@@ -1174,6 +1183,8 @@ def build_daily_email_body(
     night_art: dict,
     morning_art: dict,
     noon_result,
+    night_card_meta: dict,
+    morning_card_meta: dict,
 ) -> str:
     noon_cand = noon_result.candidate
     noon_wlen = x_weighted_length(noon_result.post)
@@ -1183,24 +1194,33 @@ def build_daily_email_body(
         else ""
     )
     ref_line = f"参考根拠：{noon_cand.reference}\n" if noon_cand.reference else ""
+    noon_layout_label = LAYOUT_LABELS.get(noon_result.layout_id, noon_result.layout_id)
+    noon_palette_label = PALETTES.get(noon_result.palette_id, {}).get("label", noon_result.palette_id)
 
     return (
         f"毎日19:45 JST 自動生成X投稿まとめ（{today_str} 配信）\n"
-        "※今夜用・翌朝用の図解カードPNG 2枚を添付しています。翌日昼用は画像・URLなしの単体完結ポストです。\n\n"
+        "※今夜用・翌朝用・翌日昼用の16:9（1200×675px）図解カードPNG 3枚を添付しています。\n"
+        "※翌日昼用はURL・note誘導なしのX単体完結ポスト＆図解です。\n\n"
         "============================================================\n"
         f"【夜用】（{today_str} 夜｜添付図解：x_card_night.png）\n"
         f"対象記事：{night_art['title']}\n"
+        f"図解レイアウト：{night_card_meta['layout_id']}（{night_card_meta['layout_label']}）\n"
+        f"図解配色：{night_card_meta['palette_label']}\n"
         "============================================================\n"
         f"{night_art['post']}\n\n"
         "============================================================\n"
         f"【翌朝用】（{tomorrow_str} 朝｜添付図解：x_card_morning.png）\n"
         f"対象記事：{morning_art['title']}\n"
+        f"図解レイアウト：{morning_card_meta['layout_id']}（{morning_card_meta['layout_label']}）\n"
+        f"図解配色：{morning_card_meta['palette_label']}\n"
         "============================================================\n"
         f"{morning_art['post']}\n\n"
         "============================================================\n"
-        f"【翌日 昼用（リンクなし・臨床知見）】（{tomorrow_str} 昼｜URL・宣伝なし・X単体完結）\n"
+        f"【翌日 昼用（リンクなし・臨床知見）】（{tomorrow_str} 昼｜添付図解：x_card_noon.png｜URL・宣伝なし・X単体完結）\n"
         f"抽出元：{noon_result.source_origin_label}（{noon_result.cycle}周目 / source_id: {noon_cand.source_id}）\n"
         f"トピック：{noon_cand.topic}\n"
+        f"図解レイアウト：{noon_result.layout_id}（{noon_layout_label}）\n"
+        f"図解配色：{noon_palette_label}\n"
         f"{ref_line}"
         f"文字数チェック：X換算 {noon_wlen}/280（全角約 {noon_wlen / 2:.1f} 字）\n"
         f"{reset_notice}"
@@ -1273,24 +1293,45 @@ def main() -> None:
     morning_png_path = BASE_DIR / "x_card_morning.png"
 
     noon_post_path = BASE_DIR / "x_post_noon.txt"
+    noon_html_path = BASE_DIR / "x_card_noon.html"
+    noon_png_path = BASE_DIR / "x_card_noon.png"
     daily_mail_path = BASE_DIR / "x_mail_daily.txt"
+
+    # Build rolling 2-post layout avoidance window across x_rotation_state.json & x_noon_history.json
+    layout_window = int(state.get("layout_rotation_window", 2))
+    existing_noon_state = load_noon_history(NOON_HISTORY_FILE)
+    rolling_layouts = get_recent_layout_ids(state, existing_noon_state, window=layout_window)
 
     slots = [
         ("evening", today_str, night_art, night_post_path, night_html_path, night_png_path),
         ("next_morning", tomorrow_str, morning_art, morning_post_path, morning_html_path, morning_png_path),
     ]
 
-    for _slot_name, _date_str, art, post_path, html_path, png_path in slots:
+    slot_card_metas: dict[str, dict] = {}
+    for slot_name, _date_str, art, post_path, html_path, png_path in slots:
         post_path.write_text(art["post"] + "\n", encoding="utf-8")
-        html_path.write_text(build_card_html(art), encoding="utf-8")
-        if not args.skip_cards:
-            render_png(html_path, png_path)
+        spec = build_x_card_spec_from_article(
+            art,
+            avoid_layouts=rolling_layouts[-layout_window:],
+        )
+        meta = generate_x_card_files(
+            spec,
+            html_path,
+            png_path,
+            render=not args.skip_cards,
+        )
+        slot_card_metas[slot_name] = meta
+        rolling_layouts.append(spec.layout_id)
 
-    # Generate Next Noon post (No URL / No Promotion / Standalone Clinical Pearl)
+    # Generate Next Noon post + 16:9 standalone clinical pearl card (No URL / No Promotion)
     noon_result, noon_state = generate_next_noon_post(
         BASE_DIR,
         history_path=NOON_HISTORY_FILE,
         skip_nlm=args.skip_nlm,
+        extra_avoid_layouts=rolling_layouts[-layout_window:],
+        card_html_path=noon_html_path,
+        card_png_path=noon_png_path,
+        render_card=not args.skip_cards,
     )
     noon_post_path.write_text(noon_result.post + "\n", encoding="utf-8")
 
@@ -1302,6 +1343,8 @@ def main() -> None:
         night_art=night_art,
         morning_art=morning_art,
         noon_result=noon_result,
+        night_card_meta=slot_card_metas["evening"],
+        morning_card_meta=slot_card_metas["next_morning"],
     )
     daily_mail_path.write_text(email_body, encoding="utf-8")
 
@@ -1313,19 +1356,30 @@ def main() -> None:
         print("-----------------------------------")
         return
 
-    attachments = [p for p in (night_png_path, morning_png_path) if p.exists()]
+    attachments = [p for p in (night_png_path, morning_png_path, noon_png_path) if p.exists()]
     delivery_mode = send_email(email_subject, daily_mail_path, attachments)
 
-    print(f"[evening] {night_art['key']} | {night_art['title']} -> {delivery_mode}")
-    print(f"[next_morning] {morning_art['key']} | {morning_art['title']} -> {delivery_mode}")
+    print(
+        f"[evening] {night_art['key']} | {slot_card_metas['evening']['layout_id']} "
+        f"({slot_card_metas['evening']['palette_id']}) | {night_art['title']} -> {delivery_mode}"
+    )
+    print(
+        f"[next_morning] {morning_art['key']} | {slot_card_metas['next_morning']['layout_id']} "
+        f"({slot_card_metas['next_morning']['palette_id']}) | {morning_art['title']} -> {delivery_mode}"
+    )
     print(
         f"[next_noon] {noon_result.candidate.source_id} (cycle {noon_result.cycle}) | "
+        f"{noon_result.layout_id} ({noon_result.palette_id}) | "
         f"{noon_result.candidate.topic} [{noon_result.generation_method}] -> {delivery_mode}"
     )
 
-    # Update x_rotation_state.json (evening + next_morning)
+    # Update x_rotation_state.json (evening + next_morning) with layout_id & palette_id
     state["batch_size"] = 3
+    state["layout_rotation_window"] = layout_window
+    last_rot_layouts = [x for x in state.get("last_layout_ids", []) if x in VALID_LAYOUT_IDS]
     for slot_name, date_str, art, post_path, _html_path, png_path in slots:
+        meta = slot_card_metas[slot_name]
+        last_rot_layouts.append(meta["layout_id"])
         state.setdefault("history", []).append(
             {
                 "date": date_str,
@@ -1333,20 +1387,24 @@ def main() -> None:
                 "key": art["key"],
                 "title": art["title"],
                 "url": art["url"],
+                "layout_id": meta["layout_id"],
+                "palette_id": meta["palette_id"],
                 "post_file": str(post_path),
                 "card_file": str(png_path),
                 "email_sent": True,
                 "delivery_mode": delivery_mode,
             }
         )
+    state["last_layout_ids"] = last_rot_layouts[-layout_window:]
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    # Update x_noon_history.json (next_noon)
+    # Update x_noon_history.json (next_noon) with layout_id, palette_id & card_file
     record_noon_history(
         noon_state,
         noon_result,
         date_str=tomorrow_str,
         post_file=str(noon_post_path),
+        card_file=str(noon_png_path),
         email_sent=True,
         delivery_mode=delivery_mode,
     )
@@ -1361,13 +1419,14 @@ def main() -> None:
             morning_post_path,
             morning_html_path,
             noon_post_path,
+            noon_html_path,
             daily_mail_path,
             STATE_FILE,
             NOON_HISTORY_FILE,
         ):
             if fpath.exists():
                 (home_np / fpath.name).write_text(fpath.read_text(encoding="utf-8"), encoding="utf-8")
-        for png in (night_png_path, morning_png_path):
+        for png in (night_png_path, morning_png_path, noon_png_path):
             if png.exists():
                 (home_np / png.name).write_bytes(png.read_bytes())
 

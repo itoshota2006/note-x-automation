@@ -5,6 +5,8 @@
   "schedule_utc": "10:45",
   "schedule_pst": "02:45",
   "batch_size": 3,
+  "layout_rotation_window": 2,
+  "last_layout_ids": [],
   "slots_per_run": [
     {
       "slot": "evening",
@@ -17,6 +19,12 @@
       "subject": "【X投稿用・翌朝分】自動生成ポスト＆図解カード",
       "post_file": "/shared/user/.gemini/note-project/x_post_morning.txt",
       "card_file": "/shared/user/.gemini/note-project/x_card_morning.png"
+    },
+    {
+      "slot": "next_noon",
+      "subject": "【X投稿用・翌日昼分】臨床知見ポスト＆図解カード（リンクなし）",
+      "post_file": "/shared/user/.gemini/note-project/x_post_noon.txt",
+      "card_file": "/shared/user/.gemini/note-project/x_card_noon.png"
     }
   ],
   "recipient_email": "itoshota2006@gmail.com",

@@ -34,6 +34,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from x_card_renderer import (
+    VALID_LAYOUT_IDS,
+    build_x_card_spec_from_noon,
+    generate_x_card_files,
+    get_recent_layout_ids,
+)
+
 JST = timezone(timedelta(hours=9))
 UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 DONE_PREFIX_RE = re.compile(r"^\s*[\[［]済[\]］]\s*")
@@ -506,6 +513,9 @@ class NoonResult:
     was_reset: bool
     source_origin_label: str
     generation_method: str
+    layout_id: str = ""
+    palette_id: str = ""
+    card_file: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -1666,6 +1676,8 @@ def load_noon_history(history_path: Path) -> dict[str, Any]:
     if history_path.exists():
         data = json.loads(history_path.read_text(encoding="utf-8"))
         data.setdefault("cycle", 1)
+        data.setdefault("layout_rotation_window", 2)
+        data.setdefault("last_layout_ids", [])
         data.setdefault("used_source_ids", [])
         data.setdefault("used_topics", [])
         data.setdefault("excluded_source_ids", [])
@@ -1675,9 +1687,11 @@ def load_noon_history(history_path: Path) -> dict[str, Any]:
         data.setdefault("reset_log", [])
         return data
     return {
-        "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック履歴台帳",
+        "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック・図解レイアウト履歴台帳",
         "timezone": "Asia/Tokyo",
         "cycle": 1,
+        "layout_rotation_window": 2,
+        "last_layout_ids": [],
         "used_source_ids": [],
         "used_topics": [],
         "excluded_source_ids": [],
@@ -1825,6 +1839,10 @@ def generate_next_noon_post(
     *,
     history_path: Path | None = None,
     skip_nlm: bool = False,
+    extra_avoid_layouts: list[str] | None = None,
+    card_html_path: Path | None = None,
+    card_png_path: Path | None = None,
+    render_card: bool = False,
 ) -> tuple[NoonResult, dict[str, Any]]:
     """
     Main entry point to select a non-overlapping clinical source and generate the noon X post.
@@ -1927,6 +1945,24 @@ def generate_next_noon_post(
         "knowledge_base": "リポジトリ内ナレッジベース（knowledge/）",
         "drafts_nlm_export": "リポジトリ内NotebookLM書き出し（drafts/）",
     }
+
+    # Select non-repeating X diagram layout (avoiding last 2 layouts from history + caller window)
+    window = int(history_state.get("layout_rotation_window", 2))
+    recent_noon_layouts = get_recent_layout_ids(history_state, window=window)
+    combined_avoid = list(dict.fromkeys(recent_noon_layouts + list(extra_avoid_layouts or [])))[-window:]
+
+    card_spec = build_x_card_spec_from_noon(
+        topic=picked.topic,
+        post=post_text,
+        domain=picked.domain,
+        reference=picked.reference,
+        avoid_layouts=combined_avoid,
+    )
+    rendered_card_path = ""
+    if card_html_path and card_png_path:
+        generate_x_card_files(card_spec, card_html_path, card_png_path, render=render_card)
+        rendered_card_path = str(card_png_path)
+
     result = NoonResult(
         candidate=picked,
         post=post_text,
@@ -1934,6 +1970,9 @@ def generate_next_noon_post(
         was_reset=was_reset,
         source_origin_label=origin_labels.get(picked.origin, picked.origin),
         generation_method=generation_method,
+        layout_id=card_spec.layout_id,
+        palette_id=card_spec.palette_id,
+        card_file=rendered_card_path,
     )
     return result, history_state
 
@@ -1946,12 +1985,20 @@ def record_noon_history(
     post_file: str,
     email_sent: bool,
     delivery_mode: str,
+    card_file: str = "",
 ) -> dict[str, Any]:
     cand = result.candidate
     if cand.source_id not in history_state.setdefault("used_source_ids", []):
         history_state["used_source_ids"].append(cand.source_id)
     if cand.topic not in history_state.setdefault("used_topics", []):
         history_state["used_topics"].append(cand.topic)
+
+    effective_card = card_file or result.card_file
+    if result.layout_id in VALID_LAYOUT_IDS:
+        window = int(history_state.get("layout_rotation_window", 2))
+        last_lids = [x for x in history_state.get("last_layout_ids", []) if x in VALID_LAYOUT_IDS]
+        last_lids.append(result.layout_id)
+        history_state["last_layout_ids"] = last_lids[-window:]
 
     history_state.setdefault("history", []).append(
         {
@@ -1965,8 +2012,11 @@ def record_noon_history(
             "topic": cand.topic,
             "domain": cand.domain,
             "reference": cand.reference,
+            "layout_id": result.layout_id,
+            "palette_id": result.palette_id,
             "post_preview": result.post,
             "post_file": post_file,
+            "card_file": effective_card,
             "email_sent": email_sent,
             "delivery_mode": delivery_mode,
         }

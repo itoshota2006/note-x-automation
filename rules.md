@@ -167,24 +167,33 @@
 5. **X告知素材の作成ルール（x.comのブラウザ自動操作は禁止）：**
    - **ターゲット最適化（新人〜中堅PTの両立）：** 1〜2年目の新人PTが「明日の臨床の迷いが消える」と感じる分かりやすい整理・基本構造を入り口にしつつ、3〜7年目の中堅PTも「臨床推論の根拠や後輩指導の言語化にそのまま使える」と納得する実践的な知見・数値基準を盛り込むこと。
    - **noteへのクリック率向上（図解と文面の役割分担）：**
-     1. 140字ポスト案のURL直前には、必ず「明日の臨床で迷わないための具体策はこちら👇」など行動を促す誘導文を1行入れること。
-     2. 図解カード画像では「全体像や概念の整理」までにとどめ、具体的な数値基準や臨床プロトコルの核心はnote記事へ誘導する余白を残すこと（画像だけで完結させない）。
-     3. 図解カード画像の最下部（フッター）には、「▼ 具体的な評価基準と臨床での使い方はnote記事で解説」という誘導帯を必ず入れること。
-   - **毎日19:45（JST）1回実行・2記事分（今夜分＋翌朝分）まとめ生成＆Gmail 2通連続送信フロー：**
-     1. **2記事のローテーション選定:** 1回の実行につき、`/shared/user/.gemini/note-project/past_articles.md` と `/shared/user/.gemini/note-project/x_rotation_state.json` を照合し、重複しない異なる公開済み記事を2本選定する（1本目＝今夜用、2本目＝翌朝用）。
-     2. **今夜用・翌朝用の素材生成:** 上記ルール（140字以内・URL直前の誘導文・ターゲット最適化・最下部フッター帯付き図解カード）に従い、以下を `/shared/user/.gemini/note-project/`（および `~/note-project/`）に生成・保存する。
+     1. 140字ポスト案のURL直前には、必ず「明日の臨床で迷わないための具体策はこちら👇」など行動を促す誘導文を1行入れること（※昼の知識系投稿はURL・宣伝なし・X単体完結のため誘導文・note言及は禁止）。
+     2. 朝夜の紹介図解カード画像では「全体像や概念の整理」までにとどめ、具体的な数値基準や臨床プロトコルの核心はnote記事へ誘導する余白を残すこと（画像だけで完結させない）。
+     3. 朝夜の紹介図解カード画像の最下部（フッター）には、「▼ 具体的な評価基準と臨床での使い方はnote記事で解説」という誘導帯を必ず入れること（※昼の知識系投稿の図解カードはURL・`note` 誘導なしとし、単体完結の臨床ポイント表記にとどめる）。
+   - **【X図解（昼の知識系投稿・朝夜の紹介投稿 共通）のレイアウト・配色自動切替＆視認性ルール】**
+     - **図解レイアウト5パターン（投稿内容・切り口に最も適した型を自動選択）：**
+       - `layout_matrix`：2軸マトリクス・比較型（「〇〇 vs △△」「違いの比較」向け）
+       - `layout_flow`：3ステップ・フロー型（評価手順・臨床推論プロセス向け）
+       - `layout_grid`：4象限・チェックリスト型（鑑別ポイント・4つの視点向け）
+       - `layout_hero`：1メッセージ強調・結論ファースト型（逆説フック・数値データ提示向け）
+       - `layout_timeline`：タイムライン・経過型（病期別アプローチ・術後プロトコル向け）
+     - **テーマ連動の配色3パレット：**
+       - **運動器・バイオメカニクス：** ネイビー × オレンジ
+       - **疼痛・神経系：** ディープグリーン × イエロー
+       - **評価・臨床推論：** スレートグレー × シアン
+     - **Xタイムライン視認性・文字数制約：**
+       - 画像サイズは **16:9（1200×675px）** とする。
+       - タイムラインで一瞬で読めるよう、文字数は note の図解より **3〜4割減らし、「見出し＋短いフレーズ3〜4個」** に絞る（長い説明文は禁止）。
+     - **レイアウト重複回避の履歴管理：**
+       - `x_rotation_state.json`（朝夜）および `x_noon_history.json`（昼）に、使用したレイアウトID（例：`"layout_id": "layout_flow"`）と配色ID（`"palette_id"`）を必ず記録し、**直近1〜2回の投稿と同じレイアウトが連続しないように制御**すること。
+   - **毎日19:45（JST）1回実行・夜／翌朝／翌日昼まとめ生成＆Gmail送信フロー：**
+     1. **2記事＋昼1知見のローテーション選定:** 1回の実行につき、`past_articles.md`・`x_rotation_state.json`・`x_noon_history.json` を照合し、重複しない異なる公開済み記事を2本（今夜用・翌朝用）と、リンクなし臨床知見1本（翌日昼用）を選定する。あわせて直近1〜2回の `layout_id` を参照し、連続重複しないレイアウトを各スロットへ割り当てる。
+     2. **今夜用・翌朝用・翌日昼用の素材生成:** 上記ルール（16:9・1200×675px・5レイアウト×3配色・見出し＋短フレーズ3〜4個）に従い、以下を生成・保存する。
         - **今夜用:** `x_post_night.txt` と `x_card_night.png`（HTMLソース：`x_card_night.html`）
         - **翌朝用:** `x_post_morning.txt` と `x_card_morning.png`（HTMLソース：`x_card_morning.html`）
-     3. **Gmail（`itoshota2006@gmail.com`）への2通連続送信:** 添付画像の取り違えを防ぐため、以下の2通に分けて連続送信する（無人自動実行モード `AGY_UNATTENDED` で `send-with-attachment` が制限される場合は `gmail mutate create-draft` で2通の下書きを作成する）。
-        - **1通目（今夜分）:** 件名 `【X投稿用・今夜分】自動生成ポスト＆図解カード` ／ 本文：`x_post_night.txt` ／ 添付：`x_card_night.png`
-          ```bash
-          gmail mutate send-with-attachment --to "itoshota2006@gmail.com" --subject "【X投稿用・今夜分】自動生成ポスト＆図解カード" --body-file /shared/user/.gemini/note-project/x_post_night.txt --file /shared/user/.gemini/note-project/x_card_night.png
-          ```
-        - **2通目（翌朝分）:** 件名 `【X投稿用・翌朝分】自動生成ポスト＆図解カード` ／ 本文：`x_post_morning.txt` ／ 添付：`x_card_morning.png`
-          ```bash
-          gmail mutate send-with-attachment --to "itoshota2006@gmail.com" --subject "【X投稿用・翌朝分】自動生成ポスト＆図解カード" --body-file /shared/user/.gemini/note-project/x_post_morning.txt --file /shared/user/.gemini/note-project/x_card_morning.png
-          ```
-     4. **ローテーション履歴の更新:** 送信完了後、`/shared/user/.gemini/note-project/x_rotation_state.json`（および `~/note-project/x_rotation_state.json`）に今夜分（`slot: "evening"`）と翌朝分（`slot: "next_morning"`）の2件の履歴を追記する。
+        - **翌日昼用（リンクなし・臨床知見）:** `x_post_noon.txt` と `x_card_noon.png`（HTMLソース：`x_card_noon.html`）
+     3. **Gmail（`itoshota2006@gmail.com`）への送信:** `run_daily_x.py` 実行時に日次まとめメール（添付：`x_card_night.png`・`x_card_morning.png`・`x_card_noon.png`）またはスロット別メールとして送信する（無人自動実行モード `AGY_UNATTENDED` で `send-with-attachment` が制限される場合は `gmail mutate create-draft` で下書きを作成する）。
+     4. **ローテーション履歴の更新:** 送信完了後、`x_rotation_state.json` に今夜分（`slot: "evening"`）と翌朝分（`slot: "next_morning"`）、`x_noon_history.json` に翌日昼分（`slot: "next_noon"`）を追記し、全エントリに `"layout_id"` と `"palette_id"` を記録する。
 
 ## 6．note自動下書きルール（毎日19:30実行｜GitHub `itoshota2006/note-x-automation` の `note-themes.txt` 連携）
 1. **GitHub上の `note-themes.txt` の取得・読み取り:**

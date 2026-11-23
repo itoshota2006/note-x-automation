@@ -1,7 +1,9 @@
 {
-  "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック履歴台帳",
+  "description": "翌日昼用X投稿（リンク・宣伝なし／臨床知見）の使用済みソースID・トピック・図解レイアウト履歴台帳",
   "timezone": "Asia/Tokyo",
   "cycle": 1,
+  "layout_rotation_window": 2,
+  "last_layout_ids": [],
   "used_source_ids": [],
   "used_topics": [],
   "excluded_source_ids": [
