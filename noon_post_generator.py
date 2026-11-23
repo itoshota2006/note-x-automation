@@ -72,6 +72,223 @@ FORBIDDEN_CTA_PHRASES = [
     "チェックして",
 ]
 
+# Refusal / error phrases emitted by NotebookLM or LLMs when a source lacks clinical PT content
+FORBIDDEN_REFUSAL_PHRASES = [
+    "作成できません",
+    "作成はできません",
+    "回答できません",
+    "お答えできません",
+    "生成できません",
+    "記載されていません",
+    "記載がないため",
+    "含まれていないため",
+    "情報がありません",
+    "見当たりません",
+    "確認できません",
+    "資料を追加",
+    "資料の追加",
+    "文献等の登録",
+    "登録をご検討",
+    "追加をご検討",
+    "ご検討ください",
+    "ご指定の資料",
+    "指定された資料",
+    "登録されている資料",
+    "クレジットカード",
+    "還元率",
+]
+
+# Default/placeholder NotebookLM titles that must be rejected unless clearly medical/PT
+DEFAULT_UNTITLED_TITLES = {
+    "テキストを貼り付けました",
+    "無題のノートブック",
+    "無題",
+    "新しいノートブック",
+    "pasted text",
+    "untitled notebook",
+    "copied text",
+}
+
+# Personal / non-medical keywords that immediately disqualify a notebook or source
+NON_MEDICAL_BLOCK_TERMS = (
+    "クレジットカード",
+    "クレジット",
+    "還元率",
+    "olive",
+    "フレキシブルペイ",
+    "ポイント還元",
+    "vポイント",
+    "楽天カード",
+    "三井住友",
+    "投資",
+    "nisa",
+    "ideco",
+    "株式",
+    "銘柄",
+    "配当",
+    "家計",
+    "家計簿",
+    "節約",
+    "ポイ活",
+    "ふるさと納税",
+    "確定申告",
+    "住宅ローン",
+    "保険見直し",
+    "銀行口座",
+    "旅行計画",
+    "レシピ",
+    "献立",
+    "買い物リスト",
+)
+
+# Medical / physical therapy / rehabilitation keywords required for NotebookLM extraction
+MEDICAL_PT_KEYWORDS = (
+    # Japanese medical & PT domain
+    "理学療法",
+    "リハビリ",
+    "運動器",
+    "整形",
+    "評価",
+    "治療",
+    "臨床",
+    "患者",
+    "疾患",
+    "症候群",
+    "骨折",
+    "術後",
+    "関節",
+    "筋力",
+    "筋電図",
+    "筋活動",
+    "可動域",
+    "歩行",
+    "動作",
+    "姿勢",
+    "座位",
+    "立位",
+    "起立",
+    "バランス",
+    "転倒",
+    "疼痛",
+    "痛み",
+    "しびれ",
+    "麻痺",
+    "神経",
+    "脊髄",
+    "脊椎",
+    "頚椎",
+    "頸椎",
+    "胸椎",
+    "腰椎",
+    "骨盤",
+    "体幹",
+    "股関節",
+    "膝",
+    "足関節",
+    "足底",
+    "肩",
+    "肘",
+    "手関節",
+    "手根管",
+    "腱",
+    "靭帯",
+    "半月板",
+    "軟骨",
+    "脳卒中",
+    "片麻痺",
+    "脊髄損傷",
+    "栄養",
+    "検査値",
+    "ガイドライン",
+    "文献",
+    "症例",
+    "介入",
+    "トレーニング",
+    "ストレッチ",
+    "装具",
+    "電気刺激",
+    "スプリント",
+    "モビライゼーション",
+    "免荷",
+    "荷重",
+    "離床",
+    "肉離れ",
+    "捻挫",
+    "拘縮",
+    "凍結肩",
+    "オスグッド",
+    "シンスプリント",
+    "腰痛",
+    "ヘルニア",
+    # English medical & PT domain
+    "physical therapy",
+    "physiotherapy",
+    "rehab",
+    "rehabilitation",
+    "orthop",
+    "musculoskeletal",
+    "clinical",
+    "patient",
+    "gait",
+    "balance",
+    "postur",
+    "trunk",
+    "spine",
+    "spinal",
+    "cervical",
+    "lumbar",
+    "thoracic",
+    "shoulder",
+    "knee",
+    "hip",
+    "ankle",
+    "elbow",
+    "wrist",
+    "fracture",
+    "tendon",
+    "tendinopathy",
+    "ligament",
+    "meniscus",
+    "arthroplast",
+    "tka",
+    "tha",
+    "acl",
+    "stroke",
+    "myelopath",
+    "radiculopath",
+    "emg",
+    "electromyograph",
+    "biomechanic",
+    "kinematic",
+    "guideline",
+    "systematic review",
+    "meta-analysis",
+    "randomized",
+    "rct",
+    "pubmed",
+    "pmc",
+    "jospt",
+    "apta",
+    "mcid",
+    "mdc",
+    "cut-off",
+    "cutoff",
+    "fist",
+    "tis",
+    "bbs",
+    "tug",
+    "oss",
+    "joa",
+    "mjoa",
+    "nurick",
+    "sitting",
+    "standing",
+    "walking",
+    "muscle",
+    "joint",
+    "pain",
+)
+
 # Generic PT words that must NOT trigger false-positive overlap between distinct clinical conditions
 GENERIC_PT_STOPWORDS = {
     "理学療法",
@@ -426,6 +643,75 @@ def trim_post_to_x_limit(text: str, max_weighted_len: int = 280) -> str:
     return prefix.strip()
 
 
+def has_refusal_phrase(text: str) -> list[str]:
+    lower = normalize_text(text).lower()
+    hits = [p for p in FORBIDDEN_REFUSAL_PHRASES if p.lower() in lower]
+    return hits
+
+
+def check_medical_pt_relevance(
+    *,
+    notebook_title: str = "",
+    source_title: str = "",
+    summary: str = "",
+    domain: str = "",
+) -> tuple[bool, str]:
+    """
+    Ensure a NotebookLM notebook/source is actually related to physical therapy / medicine /
+    rehabilitation and NOT a personal/untitled note (e.g., credit cards, finance, pasted text).
+    """
+    nb_norm = normalize_text(notebook_title).lower()
+    src_norm = normalize_text(source_title).lower()
+    combined = normalize_text(f"{notebook_title} {source_title} {summary}").lower()
+
+    # 1. Explicit personal / non-medical blocklist (checked on notebook title, source title, and summary)
+    for term in NON_MEDICAL_BLOCK_TERMS:
+        if term in combined:
+            return False, f"医療・理学療法以外の私用キーワード検出: {term}"
+
+    # 2. Reject default/placeholder titles like "テキストを貼り付けました" / "無題のノートブック"
+    nb_is_default = nb_norm in DEFAULT_UNTITLED_TITLES
+    src_is_default = src_norm in DEFAULT_UNTITLED_TITLES
+    if nb_is_default and not any(kw in src_norm for kw in MEDICAL_PT_KEYWORDS):
+        return False, f"デフォルト名のノートブック（{notebook_title}）かつ医療関連語なし"
+    if src_is_default and not any(kw in nb_norm for kw in MEDICAL_PT_KEYWORDS):
+        return False, f"デフォルト名のソース（{source_title}）かつノートブック名に医療関連語なし"
+
+    # 3. Require at least one medical / PT / clinical keyword in notebook title, source title, or summary
+    #    (Note: intentionally ignore generic domain label like "運動器・NotebookLM文献" so personal notes can't sneak in)
+    if not any(kw in combined for kw in MEDICAL_PT_KEYWORDS):
+        # Allow curated static KB entries whose domain explicitly starts with "運動器" and have a real clinical topic
+        if domain.startswith("運動器・") and "notebooklm" not in domain.lower() and not src_is_default:
+            return True, ""
+        return False, "理学療法・リハビリ・運動器・評価・治療・臨床等の医療関連キーワードなし"
+
+    return True, ""
+
+
+def is_excluded_by_history(
+    *,
+    source_id: str = "",
+    notebook_id: str | None = None,
+    title: str = "",
+    notebook_title: str | None = None,
+    history_state: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
+    if not history_state:
+        return False, ""
+    excl_sids = set(history_state.get("excluded_source_ids", []))
+    if source_id and source_id in excl_sids:
+        return True, f"除外リスト登録済みsource_id: {source_id}"
+    excl_nids = set(history_state.get("excluded_notebook_ids", []))
+    if notebook_id and notebook_id in excl_nids:
+        return True, f"除外リスト登録済みnotebook_id: {notebook_id}"
+    excl_titles = {normalize_text(t).lower() for t in history_state.get("excluded_titles", []) if t}
+    if title and normalize_text(title).lower() in excl_titles:
+        return True, f"除外リスト登録済みタイトル: {title}"
+    if notebook_title and normalize_text(notebook_title).lower() in excl_titles:
+        return True, f"除外リスト登録済みノートブック名: {notebook_title}"
+    return False, ""
+
+
 def validate_noon_post(text: str, max_weighted_len: int = 280) -> tuple[bool, list[str]]:
     errors: list[str] = []
     cleaned = text.strip()
@@ -450,6 +736,9 @@ def validate_noon_post(text: str, max_weighted_len: int = 280) -> tuple[bool, li
                 errors.append(f"禁止誘導語検出: {phrase}")
         elif phrase in lower:
             errors.append(f"禁止誘導語検出: {phrase}")
+
+    for refusal in has_refusal_phrase(cleaned):
+        errors.append(f"拒否・エラー文言検出: {refusal}")
 
     return len(errors) == 0, errors
 
@@ -925,6 +1214,7 @@ def fetch_live_nlm_candidates(
     max_notebooks: int = 12,
     *,
     allow_overlap_notebooks: bool = False,
+    history_state: dict[str, Any] | None = None,
 ) -> list[NoonCandidate]:
     """Query `nlm` CLI for sources across authenticated NotebookLM notebooks."""
     notebooks = list_nlm_notebooks(nlm_bin)
@@ -934,7 +1224,25 @@ def fetch_live_nlm_candidates(
     for nb in notebooks[:max_notebooks]:
         nb_id = nb["id"]
         nb_title = nb.get("title", "")
-        # Skip entire notebook if its title explicitly matches an existing note article theme
+
+        # 1. Check explicit exclusion list (excluded_notebook_ids / excluded_titles)
+        excl, excl_reason = is_excluded_by_history(
+            notebook_id=nb_id,
+            notebook_title=nb_title,
+            history_state=history_state,
+        )
+        if excl:
+            print(f"[noon][nlm] Skip notebook '{nb_title}' ({nb_id[:8]}): {excl_reason}")
+            continue
+
+        # 2. Check medical/PT relevance of notebook title (skip personal/default notebooks immediately)
+        if nb_title and not nb_title.startswith("Pinned Notebook ("):
+            is_rel, rel_reason = check_medical_pt_relevance(notebook_title=nb_title)
+            if not is_rel:
+                print(f"[noon][nlm] Skip non-medical notebook '{nb_title}' ({nb_id[:8]}): {rel_reason}")
+                continue
+
+        # 3. Skip entire notebook if its title explicitly matches an existing note article theme
         # (unless allow_overlap_notebooks=True for spin-off extraction from a newly drafted article's notebook)
         if nb_title and not allow_overlap_notebooks:
             overlaps, reason = _check_topic_overlap_against_entries(
@@ -963,6 +1271,23 @@ def fetch_live_nlm_candidates(
                     if not sid or not stitle or sid in seen_ids:
                         continue
                     if src.get("status") not in (None, 2):
+                        continue
+                    excl_src, excl_src_reason = is_excluded_by_history(
+                        source_id=sid,
+                        notebook_id=nb_id,
+                        title=stitle,
+                        notebook_title=nb_title,
+                        history_state=history_state,
+                    )
+                    if excl_src:
+                        print(f"[noon][nlm] Skip source '{stitle}' ({sid[:8]}): {excl_src_reason}")
+                        continue
+                    is_src_rel, src_rel_reason = check_medical_pt_relevance(
+                        notebook_title=nb_title if not nb_title.startswith("Pinned Notebook (") else "",
+                        source_title=stitle,
+                    )
+                    if not is_src_rel:
+                        print(f"[noon][nlm] Skip non-medical source '{stitle}' ({sid[:8]}): {src_rel_reason}")
                         continue
                     seen_ids.add(sid)
                     candidates.append(
@@ -1214,6 +1539,11 @@ def ensure_valid_noon_post(
     when only length exceeds 280 weighted chars.
     """
     current = clean_generated_post(raw_text)
+    # Immediately reject NotebookLM/LLM refusal or "no clinical info" error responses without retrying or trimming
+    refusals = has_refusal_phrase(current)
+    if refusals:
+        return current, False, [f"拒否・エラー文言検出: {r}" for r in refusals]
+
     ok, errs = validate_noon_post(current, max_weighted_len=max_weighted_len)
     if ok:
         return current, True, []
@@ -1338,6 +1668,9 @@ def load_noon_history(history_path: Path) -> dict[str, Any]:
         data.setdefault("cycle", 1)
         data.setdefault("used_source_ids", [])
         data.setdefault("used_topics", [])
+        data.setdefault("excluded_source_ids", [])
+        data.setdefault("excluded_notebook_ids", [])
+        data.setdefault("excluded_titles", [])
         data.setdefault("history", [])
         data.setdefault("reset_log", [])
         return data
@@ -1347,6 +1680,14 @@ def load_noon_history(history_path: Path) -> dict[str, Any]:
         "cycle": 1,
         "used_source_ids": [],
         "used_topics": [],
+        "excluded_source_ids": [],
+        "excluded_notebook_ids": [],
+        "excluded_titles": [
+            "テキストを貼り付けました",
+            "無題のノートブック",
+            "Untitled notebook",
+            "Pasted text",
+        ],
         "history": [],
         "reset_log": [],
     }
@@ -1382,6 +1723,37 @@ def select_candidate_with_rotation(
     eligible: list[NoonCandidate] = []
     excluded_count = 0
     for cand in candidates:
+        # 1. Explicit exclusion list in x_noon_history.json
+        excl, excl_reason = is_excluded_by_history(
+            source_id=cand.source_id,
+            notebook_id=cand.notebook_id,
+            title=cand.topic,
+            notebook_title=cand.notebook_title,
+            history_state=history_state,
+        )
+        if excl:
+            print(f"[noon][exclude] Skipped '{cand.source_id}' ({cand.topic[:36]}): {excl_reason}")
+            continue
+
+        # 2. Medical / PT relevance check
+        is_rel, rel_reason = check_medical_pt_relevance(
+            notebook_title=cand.notebook_title or "",
+            source_title=cand.topic,
+            summary=cand.summary,
+            domain=cand.domain,
+        )
+        if not is_rel:
+            print(f"[noon][filter] Skipped non-medical '{cand.source_id}' ({cand.topic[:36]}): {rel_reason}")
+            continue
+
+        # 3. If curated post already exists, reject refusal/invalid posts before selection
+        if cand.post:
+            refusals = has_refusal_phrase(cand.post)
+            if refusals:
+                print(f"[noon][filter] Skipped refusal post '{cand.source_id}': {refusals}")
+                continue
+
+        # 4. Overlap check against past_articles.md & note-themes.txt
         overlaps, reason = is_overlapping_with_existing_notes(cand, existing_ctx)
         if overlaps:
             excluded_count += 1
@@ -1473,7 +1845,11 @@ def generate_next_noon_post(
         if nlm_bin:
             if check_nlm_auth(nlm_bin):
                 print(f"[noon][nlm] Authenticated nlm CLI detected: {nlm_bin}")
-                nlm_candidates = fetch_live_nlm_candidates(nlm_bin, existing_ctx)
+                nlm_candidates = fetch_live_nlm_candidates(
+                    nlm_bin,
+                    existing_ctx,
+                    history_state=history_state,
+                )
                 print(f"[noon][nlm] Found {len(nlm_candidates)} live NotebookLM source candidates.")
             else:
                 print("[noon][nlm] nlm CLI found, but authentication failed. Falling back to repository KB.")

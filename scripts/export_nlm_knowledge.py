@@ -40,12 +40,15 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from noon_post_generator import (  # noqa: E402
     append_kb_entry_markdown,
+    check_medical_pt_relevance,
     check_nlm_auth,
     ensure_valid_noon_post,
     extract_existing_note_context,
     fetch_live_nlm_candidates,
     find_nlm_binary,
+    is_excluded_by_history,
     is_overlapping_with_existing_notes,
+    load_noon_history,
     parse_knowledge_markdown,
     query_nlm_for_noon_post,
     query_nlm_for_spinoff_pair,
@@ -54,6 +57,7 @@ from noon_post_generator import (  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
 DEFAULT_OUT = REPO_ROOT / "knowledge" / "nlm_exported_kb.md"
+DEFAULT_HISTORY = REPO_ROOT / "x_noon_history.json"
 
 
 def git_commit_and_push(out_path: Path, added_count: int, spinoff_theme: str = "") -> None:
@@ -108,6 +112,7 @@ def main() -> None:
         )
 
     out_path = Path(args.out)
+    history_state = load_noon_history(DEFAULT_HISTORY)
     existing_ctx = extract_existing_note_context(
         REPO_ROOT / "past_articles.md",
         REPO_ROOT / "note-themes.txt",
@@ -119,6 +124,7 @@ def main() -> None:
         nlm_bin,
         existing_ctx,
         allow_overlap_notebooks=spinoff_mode or bool(args.notebook_id.strip()),
+        history_state=history_state,
     )
 
     targets = []
@@ -126,10 +132,29 @@ def main() -> None:
         entry_id = f"{c.source_id}__spinoff" if spinoff_mode else c.source_id
         if entry_id in already_exported or c.source_id in already_exported:
             continue
+        excl, excl_reason = is_excluded_by_history(
+            source_id=c.source_id,
+            notebook_id=c.notebook_id,
+            title=c.topic,
+            notebook_title=c.notebook_title,
+            history_state=history_state,
+        )
+        if excl:
+            print(f"[skip][excluded] {c.source_id}: {excl_reason}")
+            continue
+        is_rel, rel_reason = check_medical_pt_relevance(
+            notebook_title=c.notebook_title or "",
+            source_title=c.topic,
+            summary=c.summary,
+            domain=c.domain,
+        )
+        if not is_rel:
+            print(f"[skip][non-medical] {c.source_id} ({c.topic}): {rel_reason}")
+            continue
         if not spinoff_mode:
             overlaps, reason = is_overlapping_with_existing_notes(c, existing_ctx)
             if overlaps:
-                print(f"[skip] {c.source_id}: {reason}")
+                print(f"[skip][overlap] {c.source_id}: {reason}")
                 continue
         targets.append(c)
 
