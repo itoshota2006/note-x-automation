@@ -3,12 +3,16 @@
   "timezone": "Asia/Tokyo",
   "cycle": 1,
   "layout_rotation_window": 2,
-  "last_layout_ids": [],
+  "last_layout_ids": [
+    "layout_matrix"
+  ],
   "used_source_ids": [
-    "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff"
+    "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff",
+    "kb-ankle-cai-wblt"
   ],
   "used_topics": [
-    "歩行テストにおける測定条件と中止基準の統一"
+    "歩行テストにおける測定条件と中止基準の統一",
+    "足関節外側靭帯損傷後の背屈制限とWBLT評価"
   ],
   "excluded_source_ids": [
     "51bf022c-b737-4f62-9a05-8d136d1f4110",
@@ -40,8 +44,27 @@
       "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
       "email_sent": true,
       "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-25",
+      "slot": "next_noon",
+      "cycle": 1,
+      "source_id": "kb-ankle-cai-wblt",
+      "source_origin": "knowledge_base",
+      "generation_method": "knowledge_base_curated",
+      "notebook_id": null,
+      "topic": "足関節外側靭帯損傷後の背屈制限とWBLT評価",
+      "domain": "運動器・足関節",
+      "reference": "Martin et al., JOSPT CPG 2021 (Ankle Stability and Movement Coordination Impairments)",
+      "layout_id": "layout_matrix",
+      "palette_id": "musculoskeletal",
+      "post_preview": "足関節捻挫後、「痛みが引いたから終了」にしていませんか？\n背屈制限（距骨の後方滑走不全）が残ると再捻挫や慢性不安定症（CAI）の引き金になります。\n明日の臨床では非荷重ROMだけでなく、壁を使った荷重位背屈テスト（WBLT）で左右差を確認してみてください。",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_noon.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ],
   "reset_log": [],
-  "last_updated_jst": "2026-11-23T20:32:03+09:00"
+  "last_updated_jst": "2026-11-24T20:36:54+09:00"
 }
