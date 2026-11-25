@@ -6,7 +6,10 @@
   "schedule_pst": "02:45",
   "batch_size": 3,
   "layout_rotation_window": 2,
-  "last_layout_ids": [],
+  "last_layout_ids": [
+    "layout_timeline",
+    "layout_flow"
+  ],
   "slots_per_run": [
     {
       "slot": "evening",
@@ -120,6 +123,58 @@
       "key": "n56af6f20b16d",
       "title": "【大腿骨頸部骨折術後リハ】股関節ROM制限をどう考える？測定値から制限因子を読み解く評価の基本",
       "url": "https://note.com/benita_pt/n/n56af6f20b16d",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-24",
+      "slot": "evening",
+      "key": "n2c76e4749845",
+      "title": "【大腿骨頸部骨折術後リハ】早期離床と早期荷重は違う？若手PTが押さえたい評価の基本",
+      "url": "https://note.com/benita_pt/n/n2c76e4749845",
+      "layout_id": "layout_timeline",
+      "palette_id": "eval_reasoning",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-25",
+      "slot": "next_morning",
+      "key": "nce441e061c12",
+      "title": "その歩行の問題、股関節伸展だけで説明できますか？｜股関節回旋から考える歩行分析と臨床推論",
+      "url": "https://note.com/benita_pt/n/nce441e061c12",
+      "layout_id": "layout_hero",
+      "palette_id": "musculoskeletal",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-25",
+      "slot": "evening",
+      "key": "nb9577b1fc277",
+      "title": "TKA術後のリハビリ、何を見てどう進める？回復過程・機能評価・動作から考える理学療法の基本",
+      "url": "https://note.com/benita_pt/n/nb9577b1fc277",
+      "layout_id": "layout_timeline",
+      "palette_id": "musculoskeletal",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-26",
+      "slot": "next_morning",
+      "key": "nf37a082323b3",
+      "title": "【TKA術後リハ実践編】膝の可動域・筋力・歩行から考える臨床推論と具体的な治療アプローチ",
+      "url": "https://note.com/benita_pt/n/nf37a082323b3",
+      "layout_id": "layout_flow",
+      "palette_id": "musculoskeletal",
       "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
       "email_sent": true,
