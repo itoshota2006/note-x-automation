@@ -4,15 +4,18 @@
   "cycle": 1,
   "layout_rotation_window": 2,
   "last_layout_ids": [
+    "layout_matrix",
     "layout_matrix"
   ],
   "used_source_ids": [
     "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff",
-    "kb-ankle-cai-wblt"
+    "kb-ankle-cai-wblt",
+    "kb-frozen-shoulder-irritability"
   ],
   "used_topics": [
     "歩行テストにおける測定条件と中止基準の統一",
-    "足関節外側靭帯損傷後の背屈制限とWBLT評価"
+    "足関節外側靭帯損傷後の背屈制限とWBLT評価",
+    "凍結肩の刺激性（Irritability）分類に基づくROM負荷調整"
   ],
   "excluded_source_ids": [
     "51bf022c-b737-4f62-9a05-8d136d1f4110",
@@ -63,8 +66,27 @@
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_noon.png",
       "email_sent": true,
       "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-26",
+      "slot": "next_noon",
+      "cycle": 1,
+      "source_id": "kb-frozen-shoulder-irritability",
+      "source_origin": "knowledge_base",
+      "generation_method": "knowledge_base_curated",
+      "notebook_id": null,
+      "topic": "凍結肩の刺激性（Irritability）分類に基づくROM負荷調整",
+      "domain": "運動器・肩関節",
+      "reference": "Kelley et al., JOSPT CPG 2013 (Shoulder Pain and Mobility Deficits: Adhesive Capsulitis)",
+      "layout_id": "layout_matrix",
+      "palette_id": "musculoskeletal",
+      "post_preview": "凍結肩の「夜間痛・安静時痛がある時期」に強引なストレッチは逆効果になりやすいです。\nJOSPTガイドラインでも高刺激期は疼痛誘発を避け、無痛域の愛護的運動と患者教育を優先します。\nまずは「夜間痛の有無」と「動かした後の痛み持続」で負荷段階を切り分けるのが鍵です。",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_noon.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ],
   "reset_log": [],
-  "last_updated_jst": "2026-11-24T20:36:54+09:00"
+  "last_updated_jst": "2026-11-25T20:38:20+09:00"
 }
