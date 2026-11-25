@@ -79,6 +79,19 @@ FORBIDDEN_CTA_PHRASES = [
     "チェックして",
 ]
 
+# Experience-level target wording is forbidden in all public posts (readers of every career stage)
+EXPERIENCE_LEVEL_TERMS = ["若手", "新人", "初心者", "新卒", "ルーキー"]
+EXPERIENCE_YEAR_RE = re.compile(r"[0-9０-９一二三四五六七八九十]+\s*[〜～\-－]?\s*[0-9０-９一二三四五六七八九十]*\s*年目")
+
+# Top-down / directive phrasing forbidden in flat peer-clinician tone
+FORBIDDEN_DIRECTIVE_PHRASES = [
+    "してください",
+    "してみてください",
+    "すべきです",
+    "ましょう",
+    "するように",
+]
+
 # Refusal / error phrases emitted by NotebookLM or LLMs when a source lacks clinical PT content
 FORBIDDEN_REFUSAL_PHRASES = [
     "作成できません",
@@ -750,6 +763,16 @@ def validate_noon_post(text: str, max_weighted_len: int = 280) -> tuple[bool, li
     for refusal in has_refusal_phrase(cleaned):
         errors.append(f"拒否・エラー文言検出: {refusal}")
 
+    for kw in EXPERIENCE_LEVEL_TERMS:
+        if kw in cleaned:
+            errors.append(f"経験年数を限定する表記検出: {kw}")
+    if EXPERIENCE_YEAR_RE.search(cleaned):
+        errors.append("経験年数を限定する表記検出: 〇年目")
+
+    for directive in FORBIDDEN_DIRECTIVE_PHRASES:
+        if directive in cleaned:
+            errors.append(f"指示的・指導的な言い回し検出: {directive}")
+
     return len(errors) == 0, errors
 
 
@@ -1366,7 +1389,7 @@ def query_nlm_for_noon_post(
 
     prompt = (
         f"以下の特定ソース（文献名: {candidate.topic} / ID: {candidate.source_id}）の記載内容のみを根拠に、"
-        "若手〜中堅の理学療法士（運動器領域メイン）が『明日の臨床でそのまま使える』と感じる"
+        "運動器領域の理学療法士が経験年数を問わず『明日の臨床でそのまま使える』と感じる"
         "評価・治療のワンポイントまたは文献知見を、X（旧Twitter）単体で完結する投稿文として1つだけ作成してください。\n\n"
         f"{spinoff_instruction}"
         f"{retry_instruction}"
@@ -1376,7 +1399,9 @@ def query_nlm_for_noon_post(
         "3. 『このノートでは』『提供されたソースによると』『以下は〜』などの前置きは禁止。いきなり臨床の問いかけや知見から書き始めること。\n"
         "4. ソースに記載された事実・数値・基準のみを使い、捏造しないこと。\n"
         "5. 引用番号（[1]など）やMarkdown記号（**、#など）、見出しは出力せず、投稿本文のみを出力すること。\n"
-        "6. 丁寧な『です・ます』調で、2〜3行に改行して読みやすく完結させること。"
+        "6. 丁寧な『です・ます』調で、2〜3行に改行して読みやすく完結させること。\n"
+        "7. 『若手』『新人』『初心者』『〇年目』など経験年数を限定する語は使わないこと。\n"
+        "8. 『〜してください』『〜しましょう』『〜すべきです』『〜するように』などの指示口調は使わず、『〜が判断の軸になります』『〜と整理すると迷いにくくなります』のようなフラットな文体で書くこと。"
     )
     raw = _run_nlm_query(nlm_bin, candidate.notebook_id, prompt)
     return clean_generated_post(raw)
@@ -1402,7 +1427,8 @@ def query_nlm_for_spinoff_pair(
         "【絶対禁止ルール】\n"
         "- POSTは必ず全角130文字以内（X換算260ウェイト以内）に厳守すること。\n"
         "- 『note』『ノート』『ノートブック』『記事』『リンク』『URL』『詳しくは』『続きは』『プロフ』『👇』は絶対に使わないこと。\n"
-        "- 『提供されたソースでは』などの前置き禁止。丁寧な『です・ます』調で臨床に直結する内容にすること。"
+        "- 『提供されたソースでは』などの前置き禁止。丁寧な『です・ます』調で臨床に直結する内容にすること。\n"
+        "- 『若手』『新人』『初心者』『〇年目』などの経験年数表記と、『〜してください』『〜しましょう』『〜すべきです』などの指示口調は使わないこと。"
     )
     raw = _run_nlm_query(nlm_bin, candidate.notebook_id, prompt)
     sub_topic = ""
@@ -1447,7 +1473,7 @@ def generate_noon_post_via_llm(
 
     system_prompt = (
         "あなたは運動器領域に精通した中堅〜ベテラン理学療法士です。"
-        "提供された一次文献・知見メモのみを根拠に、若手〜中堅の理学療法士が"
+        "提供された一次文献・知見メモのみを根拠に、経験年数を問わず理学療法士が"
         "『明日の臨床でそのまま使える』と感じる評価・治療のワンポイントを、"
         "X（旧Twitter）単体で完結する投稿文として作成してください。\n"
         "【絶対禁止事項】\n"
@@ -1456,7 +1482,9 @@ def generate_noon_post_via_llm(
         "- Markdown記号（**、#等）、引用番号（[1]）、前置き解説は禁止。投稿本文のみ出力すること。\n"
         "【文体・文字数】\n"
         "- **必ず全角110〜130文字以内**（半角1・全角2換算で260以下、最大280厳守）。\n"
-        "- 丁寧な『です・ます』調、2〜3段落（改行あり）で読みやすく完結させる。"
+        "- 丁寧な『です・ます』調、2〜3段落（改行あり）で読みやすく完結させる。\n"
+        "- 『若手』『新人』『初心者』『〇年目』など経験年数を限定する語は禁止。\n"
+        "- 『〜してください』『〜しましょう』『〜すべきです』『〜するように』などの指示口調は禁止し、臨床家同士で視点を共有するフラットな文体にする。"
     )
 
     extra_note = ""
