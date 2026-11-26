@@ -1984,6 +1984,7 @@ def generate_next_noon_post(
         post=post_text,
         domain=picked.domain,
         reference=picked.reference,
+        summary=picked.summary,
         avoid_layouts=combined_avoid,
     )
     rendered_card_path = ""
