@@ -589,12 +589,41 @@ def build_verified_references_markdown(sources: list[dict[str, Any]], article_md
     return "\n".join(lines)
 
 
+def extract_recent_header_patterns(past_path: Path, limit: int = 2) -> list[str]:
+    """Read the most recent N header thumbnail pattern letters (A-D) from past_articles.md."""
+    if not past_path.exists():
+        return []
+    text = past_path.read_text(encoding="utf-8")
+    found = re.findall(r"見出し画像:\s*パターン([A-D])", text)
+    return found[-limit:] if found else []
+
+
+def choose_non_repeating_header_pattern(requested: str, recent_patterns: list[str]) -> str:
+    """Guarantee header pattern A-D does not repeat the most recent 1-2 articles."""
+    req = str(requested or "").strip().upper()
+    valid = ["A", "B", "C", "D"]
+    if req in valid and req not in recent_patterns:
+        return req
+    for cand in valid:
+        if cand not in recent_patterns:
+            return cand
+    # Fallback: avoid at least the immediately preceding pattern
+    last = recent_patterns[-1] if recent_patterns else ""
+    for cand in valid:
+        if cand != last:
+            return cand
+    return "A"
+
+
 def generate_article_and_diagrams(
     theme: str,
     sources: list[dict[str, Any]],
     rules_text: str,
     past_summary: str,
+    recent_header_patterns: list[str] | None = None,
 ) -> dict[str, Any]:
+    recent_header_patterns = recent_header_patterns or []
+    avoid_patterns_str = ", ".join(recent_header_patterns) if recent_header_patterns else "なし"
     system_prompt = (
         "あなたは理学療法・運動学・臨床推論・文献の批判的吟味に精通した医療系note編集長兼校閲者です。"
         "提供されたPubMed一次文献データと編集ルール（rules.md）を厳格に遵守し、経験年数を問わず理学療法士が"
@@ -701,13 +730,36 @@ def generate_article_and_diagrams(
     "footer_left_text": "簡潔な補足（55文字以内）",
     "footer_right_title": "リスク管理・連携の視点",
     "footer_right_text": "簡潔な補足（55文字以内）"
+  }},
+  "header_thumbnail": {{
+    "pattern": "A / B / C / D のいずれか1文字（直近使用パターン [{avoid_patterns_str}] は避け、記事内容に最もクリック率が高まる型を選択。A=常識の覆し・気づき型、B=ステップ・手順解説型、C=Before/After比較・対比型、D=インパクト重視・1メッセージ特化型）",
+    "pattern_reason": "この見出し画像パターンを選択した理由（1〜2文）",
+    "theme_tone": "light または dark（白〜ライトグレー基調の抜け感デザイン=light、ディープネイビー基調=dark）",
+    "hook_line": "上部1行の短い当事者意識フック（全角18字以内・経験年数表記禁止）",
+    "title_lead": "リード行（全角14字以内）",
+    "hero_word_1": "特大表示する核心キーワード1（全角2〜6字）",
+    "hero_conj": "接続語（例：と / × / の。不要なら空文字）",
+    "hero_word_2": "特大表示する核心キーワード2（全角2〜6字。不要なら空文字）",
+    "title_tail": "結び行（全角10字以内）",
+    "evidence_title": "精密根拠グラフィックの見出し（全角18字以内・英語メタラベル禁止）",
+    "evidence_ch1": "主対象筋・指標名（全角8字以内、例：中臀筋）",
+    "evidence_ch2": "代償筋・対比指標名（全角8字以内、例：TFL・QL）",
+    "evidence_left_label": "改善前ラベル（全角10字以内、例：通常外転）",
+    "evidence_left_status": "改善前状態（全角10字以内、例：代償が過多）",
+    "evidence_right_label": "改善後ラベル（全角10字以内、例：腹圧＋骨盤セット後）",
+    "evidence_right_status": "改善後状態（全角10字以内、例：中臀筋が優位）",
+    "ng_callout": "写真・図解上のNG代償ラベル（全角12字以内、例：× 骨盤の引き上げ代償）",
+    "ok_callout": "写真・図解上のOK制御ラベル（全角12字以内、例：◎ 腸骨固定 → 中臀筋）",
+    "steps": ["ステップ1（パターンB用・全角10字以内）", "ステップ2（全角10字以内）", "ステップ3（全角10字以内）"],
+    "hashtags": ["#理学療法士", "#記事内容に即した短いタグ（2個厳守）"]
   }}
 }}
 
 注意:
 - `diagram_1.rows` は **3〜4行** にして1200×800px内に美しく収めること。
 - `diagram_2.steps` は **ちょうど4ステップ** にして1200×800px内に美しく収めること。
-- `diagram_1` や `diagram_2` 内のテキストにはHTMLタグを入れずプレーンテキストで書くこと。
+- `diagram_1` や `diagram_2`、`header_thumbnail` 内のテキストにはHTMLタグ・英語メタラベル・経験年数表記（「若手」「新人」「〇年目」等）を一切入れずプレーンテキストで書くこと。
+- `header_thumbnail.hashtags` は必ず **2個** にすること。
 """
     return call_llm_json(system_prompt, user_prompt, temperature=0.25, max_output_tokens=16384)
 
@@ -1183,34 +1235,772 @@ def build_flow_diagram_html(d: dict[str, Any]) -> str:
 """
 
 
+def _sanitize_header_hashtags(raw_tags: Any) -> list[str]:
+    tags: list[str] = []
+    if isinstance(raw_tags, list):
+        for t in raw_tags:
+            s = str(t or "").strip()
+            if not s:
+                continue
+            if not s.startswith("#"):
+                s = "#" + s
+            if s not in tags:
+                tags.append(s)
+            if len(tags) >= 2:
+                break
+    if not tags:
+        tags = ["#理学療法士", "#運動器リハ"]
+    elif len(tags) == 1:
+        tags.append("#運動器リハ" if tags[0] != "#運動器リハ" else "#理学療法士")
+    return tags[:2]
+
+
+def build_header_thumbnail_html(
+    h: dict[str, Any],
+    *,
+    article_title: str = "",
+    photo_path: Path | None = None,
+) -> str:
+    """Build 1280x670px editorial note header HTML supporting Patterns A/B/C/D.
+
+    Adheres to the finalized 70% information-density balance:
+    - High typographic jump ratio (>=1.5x) with organic yellow brush highlights
+    - Minimal rounded boxes (sharp callout lines, editorial hairlines)
+    - 1 precision scientific graphic (oscilloscope sEMG waveform or biomechanical vector)
+    - No checklists, no English meta labels, max 2 hashtags + benita_pt
+    """
+    pattern = str(h.get("pattern") or "A").strip().upper()
+    if pattern not in {"A", "B", "C", "D"}:
+        pattern = "A"
+    tone = str(h.get("theme_tone") or ("dark" if pattern == "D" else "light")).strip().lower()
+    if tone not in {"light", "dark"}:
+        tone = "light"
+
+    hook_line = html.escape(str(h.get("hook_line") or "臨床の評価・介入で迷う場面へ").strip())
+    title_lead = html.escape(str(h.get("title_lead") or "").strip())
+    hero_w1 = html.escape(str(h.get("hero_word_1") or (article_title[:8] if article_title else "臨床推論")).strip())
+    hero_conj = html.escape(str(h.get("hero_conj") or "").strip())
+    hero_w2 = html.escape(str(h.get("hero_word_2") or "").strip())
+    title_tail = html.escape(str(h.get("title_tail") or "").strip())
+
+    ev_title = html.escape(str(h.get("evidence_title") or "筋電図（EMG）活動バランス比較").strip())
+    ev_ch1 = html.escape(str(h.get("evidence_ch1") or "主動作筋").strip())
+    ev_ch2 = html.escape(str(h.get("evidence_ch2") or "代償筋").strip())
+    ev_l_lbl = html.escape(str(h.get("evidence_left_label") or "従来アプローチ").strip())
+    ev_l_st = html.escape(str(h.get("evidence_left_status") or "代償が過多").strip())
+    ev_r_lbl = html.escape(str(h.get("evidence_right_label") or "制御セット後").strip())
+    ev_r_st = html.escape(str(h.get("evidence_right_status") or "主動作筋 優位").strip())
+
+    ng_callout = html.escape(str(h.get("ng_callout") or "× 代償パターン").strip())
+    ok_callout = html.escape(str(h.get("ok_callout") or "◎ 本来の運動連鎖").strip())
+
+    raw_steps = h.get("steps") if isinstance(h.get("steps"), list) else []
+    steps = [html.escape(str(s).strip()) for s in raw_steps if str(s).strip()][:3]
+    while len(steps) < 3:
+        steps.append(["土台を固定", "軸を整える", "収縮を確認"][len(steps)])
+
+    tags = _sanitize_header_hashtags(h.get("hashtags"))
+    tags_html = " &nbsp;".join(html.escape(t) for t in tags)
+
+    has_photo = bool(photo_path and photo_path.exists())
+    photo_uri = f"file://{photo_path.resolve()}" if has_photo and photo_path else ""
+
+    # Theme palette tokens
+    is_dark = tone == "dark"
+    bg_color = "#081426" if is_dark else "#EEF2F6"
+    fg_main = "#F8FAFC" if is_dark else "#0A1D37"
+    fg_sub = "#CBD5E1" if is_dark else "#1E293B"
+    fg_conj = "#94A3B8" if is_dark else "#334155"
+    accent_w2 = "#38BDF8" if is_dark else "#0369A1"
+    brush_fill = "rgba(250, 204, 21, 0.34)" if is_dark else "rgba(253, 224, 71, 0.92)"
+    text_shadow = (
+        "0 4px 20px rgba(0, 0, 0, 0.55)"
+        if is_dark
+        else "0 2px 0 rgba(255, 255, 255, 0.92), 0 8px 22px rgba(10, 29, 55, 0.20)"
+    )
+
+    hero_html = f"""
+      <div class="title-hero">
+        <span class="hero-term">
+          {hero_w1}
+          <svg class="brush-svg" viewBox="0 0 210 36" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 4 24 Q 52 14, 108 19 T 204 15 L 207 30 Q 150 34, 98 30 T 3 33 Z" fill="{brush_fill}" />
+          </svg>
+        </span>
+        {f'<span class="hero-conj">{hero_conj}</span>' if hero_conj else ''}
+        {f'''<span class="hero-term second">
+          {hero_w2}
+          <svg class="brush-svg" viewBox="0 0 210 36" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 4 22 Q 60 15, 112 20 T 205 16 L 207 31 Q 145 34, 95 29 T 2 32 Z" fill="{brush_fill}" />
+          </svg>
+        </span>''' if hero_w2 else ''}
+      </div>
+    """
+
+    # Precision biomechanical studio backdrop SVG when no external clinical photo is attached
+    fallback_studio_svg = f"""
+      <svg class="studio-bio-svg" viewBox="0 0 1280 670" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="bioGlow" cx="76%" cy="46%" r="44%">
+            <stop offset="0%" stop-color="rgba(14, 165, 233, {0.22 if is_dark else 0.16})" />
+            <stop offset="65%" stop-color="rgba(14, 165, 233, 0.04)" />
+            <stop offset="100%" stop-color="rgba(14, 165, 233, 0)" />
+          </radialGradient>
+        </defs>
+        <rect width="1280" height="670" fill="url(#bioGlow)" />
+        <!-- Fine clinical measurement grid -->
+        <g stroke="{'rgba(148,163,184,0.08)' if is_dark else 'rgba(15,35,66,0.055)'}" stroke-width="1">
+          {''.join(f'<line x1="{x}" y1="0" x2="{x}" y2="670" />' for x in range(64, 1280, 64))}
+          {''.join(f'<line x1="0" y1="{y}" x2="1280" y2="{y}" />' for y in range(64, 670, 64))}
+        </g>
+        <!-- Precision biomechanical goniometer arcs & kinematic axes on right -->
+        <g transform="translate(940, 345)" fill="none">
+          <circle cx="0" cy="0" r="215" stroke="{'rgba(56,189,248,0.20)' if is_dark else 'rgba(3,105,161,0.16)'}" stroke-width="1.5" stroke-dasharray="6 6" />
+          <circle cx="0" cy="0" r="150" stroke="{'rgba(250,204,21,0.26)' if is_dark else 'rgba(15,35,66,0.14)'}" stroke-width="1.2" />
+          <circle cx="0" cy="0" r="88" stroke="{'rgba(56,189,248,0.28)' if is_dark else 'rgba(2,132,199,0.22)'}" stroke-width="1.5" stroke-dasharray="4 4" />
+          <line x1="-240" y1="0" x2="240" y2="0" stroke="{'rgba(148,163,184,0.22)' if is_dark else 'rgba(15,35,66,0.14)'}" stroke-width="1.2" />
+          <line x1="0" y1="-240" x2="0" y2="240" stroke="{'rgba(148,163,184,0.22)' if is_dark else 'rgba(15,35,66,0.14)'}" stroke-width="1.2" />
+          <!-- Kinematic joint chain representation -->
+          <path d="M -30 -155 L 0 -35 L 0 45 L -115 155" stroke="{'rgba(248,250,252,0.55)' if is_dark else 'rgba(15,35,66,0.45)'}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="-30" cy="-155" r="7" fill="#38BDF8" />
+          <circle cx="0" cy="-35" r="9" fill="#FACC15" stroke="#0A1D37" stroke-width="2" />
+          <circle cx="0" cy="45" r="11" fill="#0EA5E9" stroke="#0A1D37" stroke-width="2" />
+          <circle cx="-115" cy="155" r="7" fill="#38BDF8" />
+        </g>
+      </svg>
+    """
+
+    photo_block = (
+        f'<div class="bg-photo"><img src="{photo_uri}" alt="臨床評価ビジュアル" /></div>'
+        if has_photo
+        else fallback_studio_svg
+    )
+
+    veil_css = (
+        (
+            "radial-gradient(ellipse 64% 92% at 16% 34%, rgba(8, 20, 38, 0.88) 0%, rgba(8, 20, 38, 0.68) 48%, rgba(8, 20, 38, 0.0) 88%),"
+            "linear-gradient(90deg, rgba(8, 20, 38, 0.78) 0%, rgba(8, 20, 38, 0.45) 36%, rgba(8, 20, 38, 0.0) 64%)"
+        )
+        if is_dark
+        else (
+            "radial-gradient(ellipse 64% 92% at 16% 34%, rgba(248, 250, 252, 0.88) 0%, rgba(248, 250, 252, 0.70) 48%, rgba(248, 250, 252, 0.0) 88%),"
+            "linear-gradient(90deg, rgba(244, 247, 251, 0.72) 0%, rgba(244, 247, 251, 0.45) 36%, rgba(244, 247, 251, 0.0) 62%)"
+        )
+    )
+
+    # Pattern-specific main body blocks
+    if pattern == "A":
+        # Pattern A: Myth-busting / Insight (Editorial Headline + Precision sEMG Oscilloscope + NG/OK Photo Callouts)
+        body_markup = f"""
+          <div class="headline-zone">
+            <div class="hook-line"><span class="hook-bar"></span>{hook_line}</div>
+            {f'<div class="title-lead">{title_lead}</div>' if title_lead else ''}
+            {hero_html}
+            {f'<div class="title-tail">{title_tail}</div>' if title_tail else ''}
+          </div>
+
+          <div class="emg-panel">
+            <div class="emg-head">
+              <div class="emg-title">{ev_title}</div>
+              <div class="emg-legend">
+                <span class="leg"><span class="leg-line" style="background:#38BDF8;"></span>{ev_ch1}</span>
+                <span class="leg"><span class="leg-line" style="background:#FB7185;"></span>{ev_ch2}</span>
+              </div>
+            </div>
+            <div class="emg-waves-wrap">
+              <div class="wave-col">
+                <div class="wave-header">
+                  <span style="color:#CBD5E1;">{ev_l_lbl}</span>
+                  <span style="color:#FB7185; font-size:12px;">{ev_l_st}</span>
+                </div>
+                <div class="wave-canvas-box"><svg id="emg-before" viewBox="0 0 228 126" width="228" height="126"></svg></div>
+              </div>
+              <div class="wave-arrow">→</div>
+              <div class="wave-col">
+                <div class="wave-header">
+                  <span style="color:#FFFFFF;">{ev_r_lbl}</span>
+                  <span style="color:#38BDF8; font-size:12px;">{ev_r_st}</span>
+                </div>
+                <div class="wave-canvas-box ok"><svg id="emg-after" viewBox="0 0 228 126" width="228" height="126"></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <svg class="bio-svg" viewBox="0 0 1280 670" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrRed" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#EF4444" />
+              </marker>
+              <marker id="arrCyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284C7" />
+              </marker>
+            </defs>
+            <line x1="894" y1="296" x2="894" y2="564" stroke="#FACC15" stroke-width="3" stroke-dasharray="7 5" />
+            <line x1="884" y1="296" x2="904" y2="296" stroke="#FACC15" stroke-width="2.5" />
+            <line x1="884" y1="564" x2="904" y2="564" stroke="#FACC15" stroke-width="2.5" />
+            <circle cx="894" cy="432" r="6" fill="#FACC15" stroke="#0A1D37" stroke-width="2" />
+            <path d="M 920 422 Q 988 368 1054 382" fill="none" stroke="#EF4444" stroke-width="4" stroke-linecap="round" marker-end="url(#arrRed)" />
+            <circle cx="786" cy="450" r="34" fill="rgba(2, 132, 199, 0.14)" stroke="#0284C7" stroke-width="2.5" />
+            <circle cx="786" cy="450" r="20" fill="none" stroke="#38BDF8" stroke-width="1.2" stroke-dasharray="4 3" />
+            <circle cx="786" cy="450" r="5" fill="#38BDF8" />
+            <line x1="786" y1="450" x2="546" y2="358" stroke="#0284C7" stroke-width="3.5" marker-end="url(#arrCyan)" />
+            <polyline points="1018,372 1044,332 1244,332" fill="none" stroke="#EF4444" stroke-width="2.2" />
+            <rect x="1044" y="298" width="200" height="32" fill="rgba(127, 29, 29, 0.90)" />
+            <text x="1144" y="320" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="900">{ng_callout}</text>
+            <polyline points="798,482 820,524 914,524" fill="none" stroke="#FACC15" stroke-width="2.2" />
+            <rect x="914" y="506" width="212" height="34" fill="rgba(10, 29, 55, 0.90)" />
+            <text x="1020" y="529" text-anchor="middle" fill="#FACC15" font-size="16" font-weight="900">{ok_callout}</text>
+          </svg>
+        """
+    elif pattern == "B":
+        # Pattern B: Step-by-step Flow (Left sharp 3-step axis + Right dominant headline & visual)
+        body_markup = f"""
+          <div class="step-rail">
+            <div class="step-rail-line"></div>
+            <div class="step-node">
+              <div class="step-num">01</div>
+              <div class="step-text">{steps[0]}</div>
+            </div>
+            <div class="step-node">
+              <div class="step-num">02</div>
+              <div class="step-text">{steps[1]}</div>
+            </div>
+            <div class="step-node active">
+              <div class="step-num">03</div>
+              <div class="step-text">{steps[2]}</div>
+            </div>
+          </div>
+
+          <div class="headline-zone pattern-b">
+            <div class="hook-line"><span class="hook-bar"></span>{hook_line}</div>
+            {f'<div class="title-lead">{title_lead}</div>' if title_lead else ''}
+            {hero_html}
+            {f'<div class="title-tail">{title_tail}</div>' if title_tail else ''}
+          </div>
+
+          <div class="emg-panel pattern-b-emg">
+            <div class="emg-head">
+              <div class="emg-title">{ev_title}</div>
+              <div class="emg-legend">
+                <span class="leg"><span class="leg-line" style="background:#38BDF8;"></span>{ev_ch1}</span>
+                <span class="leg"><span class="leg-line" style="background:#FB7185;"></span>{ev_ch2}</span>
+              </div>
+            </div>
+            <div class="emg-waves-wrap">
+              <div class="wave-col">
+                <div class="wave-header"><span style="color:#CBD5E1;">{ev_l_lbl}</span><span style="color:#FB7185;font-size:12px;">{ev_l_st}</span></div>
+                <div class="wave-canvas-box"><svg id="emg-before" viewBox="0 0 228 126" width="228" height="126"></svg></div>
+              </div>
+              <div class="wave-arrow">→</div>
+              <div class="wave-col">
+                <div class="wave-header"><span style="color:#FFFFFF;">{ev_r_lbl}</span><span style="color:#38BDF8;font-size:12px;">{ev_r_st}</span></div>
+                <div class="wave-canvas-box ok"><svg id="emg-after" viewBox="0 0 228 126" width="228" height="126"></svg></div>
+              </div>
+            </div>
+          </div>
+        """
+    elif pattern == "C":
+        # Pattern C: Before / After Split Contrast
+        body_markup = f"""
+          <div class="headline-zone pattern-c">
+            <div class="hook-line"><span class="hook-bar"></span>{hook_line}</div>
+            <div class="pattern-c-title-row">
+              {f'<span class="title-lead" style="margin-right:12px;">{title_lead}</span>' if title_lead else ''}
+              {hero_html}
+              {f'<span class="title-tail" style="margin-left:10px;">{title_tail}</span>' if title_tail else ''}
+            </div>
+          </div>
+
+          <div class="split-contrast">
+            <div class="split-pane ng">
+              <div class="split-head"><span class="split-tag ng">NG</span>{ev_l_lbl}（{ev_l_st}）</div>
+              <div class="split-wave-box"><svg id="emg-before" viewBox="0 0 228 126" width="100%" height="186" preserveAspectRatio="none"></svg></div>
+              <div class="split-caption ng">{ng_callout}</div>
+            </div>
+            <div class="split-vs">VS</div>
+            <div class="split-pane ok">
+              <div class="split-head"><span class="split-tag ok">OK</span>{ev_r_lbl}（{ev_r_st}）</div>
+              <div class="split-wave-box ok"><svg id="emg-after" viewBox="0 0 228 126" width="100%" height="186" preserveAspectRatio="none"></svg></div>
+              <div class="split-caption ok">{ok_callout}</div>
+            </div>
+          </div>
+        """
+    else:
+        # Pattern D: Magazine Cover / High-Impact Single Message
+        body_markup = f"""
+          <div class="headline-zone pattern-d">
+            <div class="hook-line"><span class="hook-bar"></span>{hook_line}</div>
+            {f'<div class="title-lead" style="font-size:44px;margin-bottom:8px;">{title_lead}</div>' if title_lead else ''}
+            {hero_html}
+            {f'<div class="title-tail" style="font-size:54px;margin-top:8px;">{title_tail}</div>' if title_tail else ''}
+          </div>
+        """
+
+    return f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  html, body {{
+    width: 1280px;
+    height: 670px;
+    overflow: hidden;
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", sans-serif;
+    background: {bg_color};
+    color: {fg_main};
+    -webkit-font-smoothing: antialiased;
+  }}
+  .poster {{
+    position: relative;
+    width: 1280px;
+    height: 670px;
+    overflow: hidden;
+    background: {bg_color};
+  }}
+  .bg-photo, .studio-bio-svg {{
+    position: absolute;
+    inset: 0;
+    width: 1280px;
+    height: 670px;
+    z-index: 1;
+  }}
+  .bg-photo img {{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 82% 28%;
+    transform: scale(1.06) translateX(52px);
+    display: block;
+    filter: contrast(1.05) saturate(0.96);
+  }}
+  .studio-veil {{
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: {veil_css};
+    pointer-events: none;
+  }}
+  .brand-vignette {{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 440px;
+    height: 92px;
+    z-index: 3;
+    background: radial-gradient(ellipse at 90% 100%, rgba(10, 29, 55, 0.68) 0%, transparent 72%);
+    pointer-events: none;
+  }}
+  .top-hairline {{
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    z-index: 8;
+    background: linear-gradient(90deg, #0A1D37 0%, #0A1D37 42%, #FACC15 42%, #FACC15 62%, rgba(10, 29, 55, 0.25) 100%);
+  }}
+  .headline-zone {{
+    position: absolute;
+    left: 48px;
+    top: 38px;
+    width: 720px;
+    z-index: 5;
+  }}
+  .headline-zone.pattern-b {{
+    left: 410px;
+    top: 42px;
+    width: 820px;
+  }}
+  .headline-zone.pattern-c {{
+    left: 48px;
+    top: 26px;
+    width: 1184px;
+  }}
+  .headline-zone.pattern-d {{
+    left: 56px;
+    top: 136px;
+    width: 900px;
+  }}
+  .pattern-c-title-row {{
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }}
+  .hook-line {{
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 22px;
+    font-weight: 900;
+    color: {fg_main};
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+    text-shadow: {text_shadow};
+  }}
+  .hook-bar {{
+    width: 5px;
+    height: 24px;
+    background: #DC2626;
+    display: inline-block;
+  }}
+  .title-lead {{
+    font-size: 38px;
+    font-weight: 900;
+    line-height: 1.25;
+    color: {fg_sub};
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+    text-shadow: {text_shadow};
+  }}
+  .title-hero {{
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    line-height: 1.04;
+    margin: 4px 0 8px 0;
+  }}
+  .hero-term {{
+    position: relative;
+    display: inline-block;
+    font-size: {'98px' if pattern == 'D' else ('78px' if pattern == 'C' else '90px')};
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    color: {fg_main};
+    z-index: 2;
+    text-shadow: {text_shadow};
+  }}
+  .hero-term.second {{ color: {accent_w2}; }}
+  .brush-svg {{
+    position: absolute;
+    left: -10px;
+    bottom: -4px;
+    width: calc(100% + 20px);
+    height: 44px;
+    z-index: -1;
+    pointer-events: none;
+  }}
+  .hero-conj {{
+    font-size: 50px;
+    font-weight: 900;
+    color: {fg_conj};
+    text-shadow: {text_shadow};
+  }}
+  .title-tail {{
+    font-size: 46px;
+    font-weight: 900;
+    line-height: 1.15;
+    color: {fg_main};
+    letter-spacing: -0.02em;
+    text-shadow: {text_shadow};
+  }}
+  /* Pattern A/B Precision sEMG Panel */
+  .emg-panel {{
+    position: absolute;
+    left: 48px;
+    bottom: 28px;
+    width: 524px;
+    height: 214px;
+    z-index: 5;
+    background: rgba(10, 24, 46, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-top: 3px solid #0EA5E9;
+    border-radius: 4px;
+    padding: 12px 16px;
+    box-shadow: 0 16px 36px rgba(10, 24, 46, 0.26);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }}
+  .emg-panel.pattern-b-emg {{
+    left: 410px;
+    bottom: 52px;
+    width: 560px;
+  }}
+  .emg-head {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+    padding-bottom: 7px;
+  }}
+  .emg-title {{ font-size: 15px; font-weight: 800; color: #F1F5F9; letter-spacing: 0.03em; }}
+  .emg-legend {{ display: flex; gap: 14px; font-size: 13px; font-weight: 700; color: #CBD5E1; }}
+  .leg {{ display: inline-flex; align-items: center; gap: 6px; }}
+  .leg-line {{ width: 14px; height: 3px; border-radius: 2px; }}
+  .emg-waves-wrap {{
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 22px 1fr;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+  }}
+  .wave-col {{ display: flex; flex-direction: column; height: 100%; justify-content: space-between; }}
+  .wave-header {{ display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 800; margin-bottom: 4px; }}
+  .wave-canvas-box {{
+    position: relative;
+    width: 100%;
+    height: 126px;
+    background: rgba(6, 15, 30, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 3px;
+    overflow: hidden;
+  }}
+  .wave-canvas-box.ok {{ border-color: rgba(56, 189, 248, 0.45); }}
+  .wave-arrow {{ text-align: center; font-size: 20px; font-weight: 900; color: #FACC15; padding-top: 16px; }}
+
+  /* Pattern B: Sharp vertical 3-step rail */
+  .step-rail {{
+    position: absolute;
+    left: 48px;
+    top: 64px;
+    bottom: 64px;
+    width: 320px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }}
+  .step-rail-line {{
+    position: absolute;
+    left: 26px;
+    top: 32px;
+    bottom: 32px;
+    width: 3px;
+    background: linear-gradient(180deg, #0EA5E9 0%, #FACC15 100%);
+    z-index: 1;
+  }}
+  .step-node {{
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: rgba(10, 24, 46, 0.90);
+    border-left: 4px solid #38BDF8;
+    padding: 20px 20px 20px 14px;
+    box-shadow: 0 12px 28px rgba(10, 24, 46, 0.22);
+  }}
+  .step-node.active {{ border-left-color: #FACC15; }}
+  .step-num {{
+    font-size: 30px;
+    font-weight: 900;
+    color: #38BDF8;
+    min-width: 44px;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }}
+  .step-node.active .step-num {{ color: #FACC15; }}
+  .step-text {{ font-size: 24px; font-weight: 900; color: #FFFFFF; line-height: 1.2; }}
+
+  /* Pattern C: Before / After Split Contrast */
+  .split-contrast {{
+    position: absolute;
+    left: 48px;
+    right: 48px;
+    bottom: 60px;
+    height: 332px;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr 64px 1fr;
+    align-items: center;
+  }}
+  .split-pane {{
+    height: 100%;
+    background: rgba(10, 24, 46, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-top: 4px solid #EF4444;
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 16px 36px rgba(10, 24, 46, 0.28);
+  }}
+  .split-pane.ok {{ border-top-color: #38BDF8; }}
+  .split-head {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #F8FAFC;
+  }}
+  .split-tag {{
+    font-size: 14px;
+    font-weight: 900;
+    padding: 3px 10px;
+    color: #FFFFFF;
+    background: #DC2626;
+  }}
+  .split-tag.ok {{ background: #0284C7; }}
+  .split-wave-box {{
+    height: 190px;
+    background: rgba(6, 15, 30, 0.88);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    overflow: hidden;
+  }}
+  .split-wave-box.ok {{ border-color: rgba(56, 189, 248, 0.45); }}
+  .split-caption {{ font-size: 18px; font-weight: 900; color: #FCA5A5; }}
+  .split-caption.ok {{ color: #FACC15; }}
+  .split-vs {{
+    text-align: center;
+    font-size: 28px;
+    font-weight: 900;
+    color: {fg_main};
+    text-shadow: {text_shadow};
+  }}
+
+  .bio-svg {{ position: absolute; inset: 0; width: 1280px; height: 670px; z-index: 4; pointer-events: none; }}
+  .brand-footer {{
+    position: absolute;
+    right: 26px;
+    bottom: 16px;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }}
+  .hashtags {{
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.94);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.70);
+    letter-spacing: 0.03em;
+  }}
+  .brand-divider {{ width: 1px; height: 16px; background: rgba(255, 255, 255, 0.45); }}
+  .brand-name {{
+    font-size: 17px;
+    font-weight: 900;
+    color: #FACC15;
+    letter-spacing: 0.06em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+  }}
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="top-hairline"></div>
+    {photo_block}
+    <div class="studio-veil"></div>
+    <div class="brand-vignette"></div>
+    {body_markup}
+    <div class="brand-footer">
+      <span class="hashtags">{tags_html}</span>
+      <span class="brand-divider"></span>
+      <span class="brand-name">benita_pt</span>
+    </div>
+  </div>
+  <script>
+    (function () {{
+      function makeSeededRandom(seed) {{
+        let s = seed % 2147483647;
+        if (s <= 0) s += 2147483646;
+        return function () {{
+          s = (s * 16807) % 2147483647;
+          return (s - 1) / 2147483646;
+        }};
+      }}
+      function buildWavePath(width, centerY, maxAmp, seed, burstStart, burstEnd) {{
+        const rand = makeSeededRandom(seed);
+        const pts = [];
+        const step = 1.6;
+        for (let x = 2; x <= width - 2; x += step) {{
+          const norm = x / width;
+          let env = 0.08;
+          if (norm >= burstStart && norm <= burstEnd) {{
+            const t = (norm - burstStart) / (burstEnd - burstStart);
+            env = 0.12 + 0.88 * Math.pow(Math.sin(Math.PI * t), 0.72);
+          }}
+          const polarity = (Math.floor(x / step) % 2 === 0 ? 1 : -1);
+          const spike = (0.25 + 0.75 * Math.pow(rand(), 0.65)) * maxAmp * env * polarity;
+          const jitter = (rand() - 0.5) * 2.2;
+          pts.push(`${{x.toFixed(1)}},${{(centerY + spike + jitter).toFixed(1)}}`);
+        }}
+        return pts.join(" ");
+      }}
+      function renderOscilloscope(svgId, cfg) {{
+        const svg = document.getElementById(svgId);
+        if (!svg) return;
+        const W = 228, H = 126;
+        let out = "";
+        for (let x = 19; x < W; x += 19) out += `<line x1="${{x}}" y1="0" x2="${{x}}" y2="${{H}}" stroke="rgba(148,163,184,0.10)" stroke-width="1" />`;
+        for (let y = 21; y < H; y += 21) out += `<line x1="0" y1="${{y}}" x2="${{W}}" y2="${{y}}" stroke="rgba(148,163,184,0.10)" stroke-width="1" />`;
+        out += `<line x1="0" y1="63" x2="${{W}}" y2="63" stroke="rgba(148,163,184,0.28)" stroke-width="1" />`;
+        out += `<line x1="0" y1="33" x2="${{W}}" y2="33" stroke="rgba(56,189,248,0.22)" stroke-width="1" stroke-dasharray="3 3" />`;
+        out += `<line x1="0" y1="95" x2="${{W}}" y2="95" stroke="rgba(251,113,133,0.22)" stroke-width="1" stroke-dasharray="3 3" />`;
+        out += `<polyline fill="none" stroke="#38BDF8" stroke-width="1.35" stroke-linejoin="round" points="${{buildWavePath(W, 33, cfg.ch1Amp, cfg.seed1, 0.14, 0.88)}}" />`;
+        out += `<polyline fill="none" stroke="#FB7185" stroke-width="1.35" stroke-linejoin="round" points="${{buildWavePath(W, 95, cfg.ch2Amp, cfg.seed2, 0.10, 0.90)}}" />`;
+        out += `<text x="6" y="13" fill="#7DD3FC" font-size="10" font-weight="800">{ev_ch1}</text>`;
+        out += `<text x="6" y="76" fill="#FDA4AF" font-size="10" font-weight="800">{ev_ch2}</text>`;
+        svg.innerHTML = out;
+      }}
+      renderOscilloscope("emg-before", {{ ch1Amp: 8, ch2Amp: 25, seed1: 101, seed2: 202 }});
+      renderOscilloscope("emg-after", {{ ch1Amp: 26, ch2Amp: 7, seed1: 303, seed2: 404 }});
+    }})();
+  </script>
+</body>
+</html>
+"""
+
+
 def find_chrome() -> str:
     for b in ("google-chrome", "google-chrome-stable", "chromium-browser", "chromium"):
         p = shutil.which(b)
         if p:
             return p
+    mac_chrome = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+    if mac_chrome.exists():
+        return str(mac_chrome)
     raise RuntimeError("Chrome binary not found")
 
 
-def render_png(html_path: Path, png_path: Path, width: int = 1200, height: int = 800) -> None:
+def render_png(
+    html_path: Path,
+    png_path: Path,
+    width: int = 1200,
+    height: int = 800,
+    *,
+    exact_size: bool = False,
+) -> None:
     chrome = find_chrome()
+    sips_bin = shutil.which("sips")
+    use_sips_downsample = bool(exact_size and sips_bin)
+    scale_factor = 2 if (not exact_size or use_sips_downsample) else 1
+    target_png = png_path.with_name(f"{png_path.stem}_2x.png") if use_sips_downsample else png_path
+
+    cmd = [
+        chrome,
+        "--headless=new",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--ignore-certificate-errors",
+        "--hide-scrollbars",
+        f"--window-size={width},{height}",
+        f"--force-device-scale-factor={scale_factor}",
+        f"--screenshot={target_png}",
+        f"file://{html_path.resolve()}",
+    ]
+    if not os.environ.get("GITHUB_ACTIONS"):
+        tmp_profile = Path("/tmp/chrome_note_draft_tmp")
+        tmp_profile.mkdir(parents=True, exist_ok=True)
+        cmd.insert(-1, f"--user-data-dir={tmp_profile}")
+
     subprocess.run(
-        [
-            chrome,
-            "--headless=new",
-            "--no-sandbox",
-            "--disable-gpu",
-            "--disable-dev-shm-usage",
-            "--ignore-certificate-errors",
-            "--hide-scrollbars",
-            f"--window-size={width},{height}",
-            "--force-device-scale-factor=2",
-            f"--screenshot={png_path}",
-            f"file://{html_path.resolve()}",
-        ],
+        cmd,
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    if use_sips_downsample and sips_bin:
+        subprocess.run(
+            [sips_bin, "-z", str(height), str(width), str(target_png), "--out", str(png_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        target_png.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1237,6 +2027,7 @@ def append_past_articles(
     draft_rel_dir: str,
     diagram_titles: list[str],
     sources: list[dict[str, Any]],
+    header_pattern: str = "A",
 ) -> None:
     if not past_path.exists():
         return
@@ -1250,7 +2041,7 @@ def append_past_articles(
         "---",
         "",
         f"### {next_num}. {title}",
-        f"- **記事キー / 状態:** `{draft_rel_dir}` / GitHub Actions自動下書き（{today_str} 作成）",
+        f"- **記事キー / 状態:** `{draft_rel_dir}` / GitHub Actions自動下書き（{today_str} 作成）`[見出し画像: パターン{header_pattern}]`",
         f"- **無料 / 有料の別:** {article_type}",
         "- **独自の切り口:**",
         f"  - {unique_angle}",
@@ -1260,6 +2051,7 @@ def append_past_articles(
         indent = "    " if h.startswith("### ") else "  "
         entry_lines.append(f"{indent}- `{h}`")
     entry_lines.append("- **使用した表や図解:**")
+    entry_lines.append(f"  - `header.png`：見出し画像（パターン{header_pattern}・1280×670px）")
     for idx, dt in enumerate(diagram_titles, start=1):
         entry_lines.append(f"  - `diagram_{idx}.png`：{dt}")
     entry_lines.append("- **引用文献（PubMed検証済み）:**")
@@ -1442,6 +2234,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Skip email sending and note-themes.txt [済] update")
     parser.add_argument("--skip-email", action="store_true", help="Skip email delivery")
     parser.add_argument("--skip-mark-done", action="store_true", help="Do not update note-themes.txt or past_articles.md")
+    parser.add_argument("--header-photo", type=str, default="", help="Optional clinical photo path for header.png")
     args = parser.parse_args()
 
     now_jst = datetime.now(JST)
@@ -1475,10 +2268,17 @@ def main() -> int:
     sources_path = out_dir / "sources.md"
     sources_path.write_text(sources_md, encoding="utf-8")
 
-    # Step 2: Article drafting + 2 diagrams JSON
+    # Step 2: Article drafting + 2 diagrams + header thumbnail JSON
     rules_text = RULES_FILE.read_text(encoding="utf-8") if RULES_FILE.exists() else ""
     past_summary = summarize_past_articles(PAST_ARTICLES_FILE)
-    result = generate_article_and_diagrams(theme, sources, rules_text, past_summary)
+    recent_header_patterns = extract_recent_header_patterns(PAST_ARTICLES_FILE, limit=2)
+    result = generate_article_and_diagrams(
+        theme,
+        sources,
+        rules_text,
+        past_summary,
+        recent_header_patterns=recent_header_patterns,
+    )
 
     article_title = str(result.get("article_title") or theme).strip()
     article_type = str(result.get("article_type") or "有料構成").strip()
@@ -1501,7 +2301,33 @@ def main() -> int:
     article_path = out_dir / "article.md"
     article_path.write_text(final_article_md, encoding="utf-8")
 
-    # Step 3: Build & render 2 high-resolution PNG diagrams
+    # Step 3: Build & render header.png (1280x670px) and 2 high-resolution PNG diagrams
+    header_spec = dict(result.get("header_thumbnail") or {})
+    header_pattern = choose_non_repeating_header_pattern(
+        str(header_spec.get("pattern") or ""),
+        recent_header_patterns,
+    )
+    header_spec["pattern"] = header_pattern
+    header_pattern_reason = str(header_spec.get("pattern_reason") or "").strip()
+
+    header_photo_path = Path(args.header_photo).expanduser() if args.header_photo.strip() else None
+    if header_photo_path and not header_photo_path.exists():
+        print(f"[warn] --header-photo not found: {header_photo_path}, using vector studio backdrop")
+        header_photo_path = None
+
+    header_html_path = out_dir / "header.html"
+    header_png_path = out_dir / "header.png"
+    header_html_path.write_text(
+        build_header_thumbnail_html(
+            header_spec,
+            article_title=article_title,
+            photo_path=header_photo_path,
+        ),
+        encoding="utf-8",
+    )
+    render_png(header_html_path, header_png_path, width=1280, height=670, exact_size=True)
+    print(f"[header] Generated {draft_rel_dir}/header.png (1280x670px, pattern={header_pattern})")
+
     d1 = result.get("diagram_1") or {}
     d2 = result.get("diagram_2") or {}
 
@@ -1523,6 +2349,7 @@ def main() -> int:
             f"- **作成日時:** {now_jst.strftime('%Y-%m-%d %H:%M JST')}",
             f"- **テーマ:** {theme}",
             f"- **保存先:** `{draft_rel_dir}`",
+            f"- **見出し画像:** `header.png`（1280×670px / パターン{header_pattern}）{f' — {header_pattern_reason}' if header_pattern_reason else ''}",
             "",
             "## 3点要約（臨床推論・評価・アプローチ）",
             f"- **① 臨床推論:** {summary_3.get('clinical_reasoning', '')}",
@@ -1552,18 +2379,28 @@ def main() -> int:
         "article_title": article_title,
         "article_type": article_type,
         "draft_dir": draft_rel_dir,
+        "header_pattern": header_pattern,
+        "header_pattern_reason": header_pattern_reason,
         "queries": queries,
         "pmids": [s["pmid"] for s in sources],
         "files": {
             "article": f"{draft_rel_dir}/article.md",
             "sources": f"{draft_rel_dir}/sources.md",
             "report": f"{draft_rel_dir}/report.md",
+            "header": f"{draft_rel_dir}/header.png",
             "diagram_1": f"{draft_rel_dir}/diagram_1.png",
             "diagram_2": f"{draft_rel_dir}/diagram_2.png",
         },
+        "note_draft_assets": {
+            "title": article_title,
+            "header_image": str(header_png_path.resolve()),
+            "body_markdown": str(article_path.resolve()),
+            "diagrams": [str(d1_png_path.resolve()), str(d2_png_path.resolve())],
+            "note_editor_url": "https://note.com/notes/new",
+        },
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"[saved] Draft & diagrams written to {draft_rel_dir}")
+    print(f"[saved] Draft, header.png & diagrams written to {draft_rel_dir}")
 
     # Step 5: Send email to RECIPIENT (unless --dry-run / --skip-email)
     github_dir_url = f"https://github.com/{GITHUB_REPO}/tree/main/{draft_rel_dir}"
@@ -1571,11 +2408,12 @@ def main() -> int:
     email_body = "\n".join(
         [
             "note自動下書き生成が完了しました。",
-            "添付の article.md と図解PNG（diagram_1.png / diagram_2.png）を使って note.com に下書き作成してください。",
+            "添付の見出し画像（header.png / 1280×670px）・article.md・図解PNG（diagram_1.png / diagram_2.png）を使って note.com に下書き作成してください。",
             "",
             f"■ テーマ: {theme}",
             f"■ 記事タイトル: {article_title}",
             f"■ 種別: {article_type}",
+            f"■ 見出し画像: header.png（パターン{header_pattern}・1280×670px）",
             f"■ GitHub保存先: {github_dir_url}",
             f"■ 検証済みPubMed一次文献: {len(sources)}件（PMID: {', '.join(s['pmid'] for s in sources)}）",
             "",
@@ -1606,7 +2444,7 @@ def main() -> int:
         delivery_mode = send_draft_email(
             subject,
             email_body,
-            [article_path, d1_png_path, d2_png_path, sources_path],
+            [article_path, header_png_path, d1_png_path, d2_png_path, sources_path],
         )
         print(f"[email] Delivered to {RECIPIENT} via {delivery_mode}")
 
@@ -1628,6 +2466,7 @@ def main() -> int:
                 str(d2.get("title") or "図解2"),
             ],
             sources=sources,
+            header_pattern=header_pattern,
         )
         print(f"[state] Marked line {selected_line_idx + 1} as [済] and updated past_articles.md")
 
