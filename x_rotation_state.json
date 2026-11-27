@@ -205,6 +205,34 @@
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
       "email_sent": true,
       "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-27",
+      "slot": "evening",
+      "key": "nea41e4ec71d3",
+      "title": "起立動作における骨盤動態の評価｜前傾・前方移動・左右偏位から考える臨床推論",
+      "url": "https://note.com/benita_pt/n/nea41e4ec71d3",
+      "layout_id": "layout_hero",
+      "palette_id": "musculoskeletal",
+      "google_flow_recommend": "YES",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_night.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_night.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-28",
+      "slot": "next_morning",
+      "key": "n197f06a537c9",
+      "title": "起立動作の問題をどう改善する？｜評価結果から選択する具体的な治療アプローチと再評価",
+      "url": "https://note.com/benita_pt/n/n197f06a537c9",
+      "layout_id": "layout_flow",
+      "palette_id": "musculoskeletal",
+      "google_flow_recommend": "YES",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_morning.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_morning.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ]
 }
