@@ -1631,6 +1631,289 @@ def generate_x_card_files(
     }
 
 
+# ---------------------------------------------------------------------------
+# Google Flow (Image-to-Video / Veo 3.1 Lite) Recommendation & Prompt Builder
+# ---------------------------------------------------------------------------
+
+GOOGLE_FLOW_VERDICT_YES = "🎬 動画化おすすめ：YES（優先度：高）"
+GOOGLE_FLOW_VERDICT_NO = "NO（静止画推奨）"
+GOOGLE_FLOW_SETTINGS_RECOMMENDED = "Veo 3.1 Lite / 720p / 8秒 / 同時生成x1（10クレジット）"
+GOOGLE_FLOW_TEXT_LOCK_SUFFIX = (
+    "Keep all text sharp, static, and completely readable. No dialogue. No music."
+)
+
+# Non-musculoskeletal lab/internal-medicine themes where criterion 2 (MSK motion) should not trigger
+_NON_MSK_STATIC_THEMES = (
+    "検査値", "栄養評価", "低栄養", "アルブミン", "alb", "crp", "hb低値", "貧血",
+    "心エコー", "血液検査", "バイオマーカー",
+)
+
+# Criterion 2: Musculoskeletal themes where spatial/temporal motion or change is key
+_MSK_MOTION_KEYWORDS_JP = (
+    "関節運動", "関節モーメント", "運動連鎖", "キネマティクス", "バイオメカニクス",
+    "筋収縮", "遠心性", "求心性", "等尺性", "筋活動", "筋電図", "同時収縮",
+    "モーターコントロール", "筋出力", "腱板", "外転筋", "大腿四頭筋", "体幹筋",
+    "重心", "重心移動", "床反力", "ベクトル", "荷重", "体重移動",
+    "歩行", "歩容", "立脚", "遊脚", "踵接地", "蹴り出し", "歩幅",
+    "起立動作", "立ち上がり", "離殿", "着座", "階段", "スクワット", "片脚立位",
+    "リーチ", "姿勢制御", "骨盤動態", "骨盤前傾", "骨盤後傾",
+    "屈曲", "伸展", "外転", "内転", "内旋", "外旋", "回旋", "背屈", "底屈",
+    "内反", "外反", "挙上", "下制", "上方回旋", "下方回旋", "滑り", "転がり",
+    "代償動作", "症状修正", "肩甲骨", "胸椎伸展", "可動域",
+)
+
+# Short ASCII abbreviations matched only on word boundaries (never inside URLs)
+_MSK_MOTION_ABBREV_RE = re.compile(
+    r"\b(?:com|cop|grf|emg|rom|ssmp|tug)\b",
+    re.IGNORECASE,
+)
+
+# Criterion 3: Causal / before-after comparison cues in 3-layer diagrams
+_CAUSAL_COMPARE_KEYWORDS = (
+    "×", "◎", "before", "after", "ビフォー", "アフター", "比較", "対比",
+    "代償", "悪循環", "改善", "修正", "変化", "移行", "推移", "前後反応",
+    "負荷調整", "増やす", "減らす", "因果",
+)
+
+_GOOGLE_FLOW_PROMPT_SYSTEM = """You write ultra-concise Image-to-Video motion prompts for Google Flow (Veo 3.1 Lite) where a 16:9 Japanese clinical diagram PNG is already loaded as the Start Frame.
+
+STRICT RULES:
+1. Do NOT describe the image, layout, background, colors, or Japanese text content. The image is already given as the Start Frame.
+2. Write ONLY 1 to 2 short English sentences describing subtle, clean motion-graphics animation (e.g., gentle glow along directional arrows, sequential card highlights, smooth pulse on contrast markers, soft light sweep across the bottom takeaway bar).
+3. Keep the camera locked-off and static (no zooming, panning, or rotating) so text never warps.
+4. Output ONLY the 1-2 English motion sentences (do NOT include the fixed ending sentence; it will be appended automatically)."""
+
+
+@dataclass
+class GoogleFlowRecommendation:
+    recommend: bool
+    verdict_label: str
+    reasons: list[str]
+    matched_criteria: list[int]
+    image_filename: str
+    settings_recommended: str = GOOGLE_FLOW_SETTINGS_RECOMMENDED
+    english_prompt: str = ""
+
+
+def _collect_spec_text(spec: XCardSpec | None) -> str:
+    if spec is None:
+        return ""
+    parts = [spec.badge, spec.conclusion_title, spec.takeaway]
+    for el in spec.elements:
+        parts.extend([el.symbol, el.focus, el.interpretation])
+    return " ".join(p for p in parts if p)
+
+
+def _fallback_google_flow_motion(
+    layout_id: str,
+    relation_type: str,
+    has_msk_motion: bool,
+) -> str:
+    """Deterministic, high-quality Image-to-Video motion-only instruction (1 sentence)."""
+    if layout_id == "layout_matrix" or relation_type == "contrast":
+        if has_msk_motion:
+            return (
+                "Subtle locked-off motion graphics animation: gently pulse the left incorrect markers, "
+                "smoothly animate the directional arrows flowing left to right to illuminate the right "
+                "clinical panels in sequence, and finish with a soft light sweep across the bottom bar."
+            )
+        return (
+            "Clean locked-off motion graphics animation: softly highlight the left comparison panels, "
+            "glide subtle energy pulses along the central arrows from left to right to illuminate "
+            "the right solution panels, and gently glow the bottom bar."
+        )
+    if layout_id in ("layout_flow", "layout_timeline"):
+        if has_msk_motion:
+            return (
+                "Smooth locked-off sequential motion graphics animation: gently illuminate each numbered "
+                "stage from left to right as subtle directional light pulses travel along the connecting "
+                "arrows, ending with a soft highlight sweep across the bottom bar."
+            )
+        return (
+            "Calm locked-off step-by-step motion graphics animation: softly highlight each numbered "
+            "card in order from left to right while subtle glowing cues flow across the connecting "
+            "arrows, finishing with a gentle pulse on the bottom bar."
+        )
+    if layout_id == "layout_grid":
+        return (
+            "Gentle locked-off row-by-row motion graphics animation: subtly illuminate each row from "
+            "top to bottom as soft light pulses glide left to right along the directional arrows, "
+            "ending with a calm glow along the bottom bar."
+        )
+    return (
+        "Subtle locked-off editorial motion graphics animation: gently highlight the top banner, "
+        "then softly illuminate the three cards one by one from left to right with subtle border "
+        "glows, finishing with a smooth shimmer across the bottom bar."
+    )
+
+
+def _normalize_flow_english_prompt(motion_text: str) -> str:
+    cleaned = WS_RE.sub(" ", (motion_text or "").strip().strip("\"'`"))
+    # Strip suffix if LLM accidentally included it so we append it cleanly once
+    cleaned = re.sub(
+        r"Keep all text sharp,?\s*static,?\s*and completely readable\.?\s*No dialogue\.?\s*No music\.?",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    if cleaned and cleaned[-1] not in ".!?":
+        cleaned += "."
+    if not cleaned:
+        return GOOGLE_FLOW_TEXT_LOCK_SUFFIX
+    return f"{cleaned} {GOOGLE_FLOW_TEXT_LOCK_SUFFIX}"
+
+
+def _generate_google_flow_english_prompt(
+    *,
+    spec: XCardSpec | None,
+    title: str,
+    reasons: list[str],
+    has_msk_motion: bool,
+    use_llm: bool = True,
+) -> str:
+    layout_id = spec.layout_id if spec else "layout_flow"
+    relation_type = spec.relation_type if spec else "flow"
+
+    if use_llm:
+        user_prompt = (
+            f"Layout pattern: {layout_id} (relation: {relation_type})\n"
+            f"Clinical theme (for motion pacing context only — do NOT describe text or image): {title}\n"
+            f"Animation focus reasons: {', '.join(reasons)}\n"
+            "Write 1-2 short English sentences giving ONLY subtle motion-graphics movement instructions "
+            "from the static Start Frame."
+        )
+        raw = _call_llm_text(_GOOGLE_FLOW_PROMPT_SYSTEM, user_prompt)
+        if raw:
+            # Ensure ASCII-dominant English and 1-2 sentences without Japanese leakage
+            candidate = WS_RE.sub(" ", raw.strip().strip("\"'`"))
+            has_jp = bool(re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", candidate))
+            # Reject descriptions of the image itself
+            starts_descriptive = bool(
+                re.match(r"^(?:a|an|the|this)\s+(?:diagram|infographic|image|card|chart|slide)\b", candidate, re.I)
+            )
+            if candidate and not has_jp and not starts_descriptive and 25 <= len(candidate) <= 320:
+                return _normalize_flow_english_prompt(candidate)
+
+    fallback = _fallback_google_flow_motion(layout_id, relation_type, has_msk_motion)
+    return _normalize_flow_english_prompt(fallback)
+
+
+def evaluate_google_flow_recommendation(
+    *,
+    image_filename: str,
+    spec: XCardSpec | None = None,
+    title: str = "",
+    post_text: str = "",
+    is_paid_article: bool = False,
+    domain: str = "",
+    extra_text: str = "",
+    use_llm: bool = True,
+) -> GoogleFlowRecommendation:
+    """Evaluate whether a 16:9 X diagram card should be animated with Google Flow (Veo 3.1 Lite).
+
+    Criteria (YES if ANY matches):
+      1. Paid note article (or main article aimed at driving readers to a paid area)
+      2. Musculoskeletal theme where spatial/temporal motion or change (joint motion,
+         muscle contraction, COM shift, GRF vector) is key to understanding
+      3. 3-layer diagram (× / ◎ / →) showcasing causal relationships or before/after comparison
+    """
+    spec_text = _collect_spec_text(spec)
+    combined_raw = " ".join(p for p in (title, post_text, domain, extra_text, spec_text) if p)
+    combined = URL_RE.sub("", combined_raw)
+    combined_lower = combined.lower()
+
+    matched_criteria: list[int] = []
+    reasons: list[str] = []
+
+    # Criterion 1: Paid note article / paid-area funnel
+    if is_paid_article:
+        matched_criteria.append(1)
+        reasons.append("有料note記事（または有料エリア誘導メイン記事）")
+
+    # Criterion 2: Spatial/temporal motion or change in musculoskeletal theme
+    theme_head = URL_RE.sub(
+        "",
+        " ".join(p for p in (title, domain, spec.conclusion_title if spec else "") if p),
+    ).lower()
+    is_non_msk_static = any(kw in theme_head for kw in _NON_MSK_STATIC_THEMES)
+    has_msk_motion = (not is_non_msk_static) and (
+        any(kw in combined_lower for kw in _MSK_MOTION_KEYWORDS_JP)
+        or bool(_MSK_MOTION_ABBREV_RE.search(combined))
+    )
+    if has_msk_motion:
+        matched_criteria.append(2)
+        reasons.append("関節運動・筋収縮・重心移動など動きや変化が鍵の運動器テーマ")
+
+    # Criterion 3: 3-layer diagram (× / ◎ / →) for causal relationship or before/after comparison
+    has_contrast_diagram = False
+    if spec is not None:
+        symbols = {el.symbol for el in spec.elements}
+        if spec.layout_id == "layout_matrix" or spec.relation_type == "contrast":
+            has_contrast_diagram = True
+        elif "×" in symbols and "◎" in symbols:
+            has_contrast_diagram = True
+        elif spec.layout_id in ("layout_flow", "layout_timeline"):
+            causal_hits = sum(1 for kw in _CAUSAL_COMPARE_KEYWORDS if kw in spec_text.lower())
+            if causal_hits >= 1 or spec_text.count("→") >= 1:
+                has_contrast_diagram = True
+
+    if has_contrast_diagram:
+        matched_criteria.append(3)
+        reasons.append("3層図解（×・◎・→）で因果関係・ビフォーアフター比較を提示")
+
+    recommend = bool(matched_criteria)
+    if recommend:
+        prompt = _generate_google_flow_english_prompt(
+            spec=spec,
+            title=title or (spec.conclusion_title if spec else ""),
+            reasons=reasons,
+            has_msk_motion=has_msk_motion,
+            use_llm=use_llm,
+        )
+        return GoogleFlowRecommendation(
+            recommend=True,
+            verdict_label=GOOGLE_FLOW_VERDICT_YES,
+            reasons=reasons,
+            matched_criteria=matched_criteria,
+            image_filename=image_filename,
+            settings_recommended=GOOGLE_FLOW_SETTINGS_RECOMMENDED,
+            english_prompt=prompt,
+        )
+
+    return GoogleFlowRecommendation(
+        recommend=False,
+        verdict_label=GOOGLE_FLOW_VERDICT_NO,
+        reasons=["無料・静的知識整理が中心のため静止画での視認性を優先"],
+        matched_criteria=[],
+        image_filename=image_filename,
+        settings_recommended=GOOGLE_FLOW_SETTINGS_RECOMMENDED,
+        english_prompt="",
+    )
+
+
+def format_google_flow_section(
+    slot_items: list[tuple[str, GoogleFlowRecommendation]],
+) -> str:
+    """Format the Google Flow video recommendation section for email & local output."""
+    lines = [
+        "============================================================",
+        "【Google Flow動画化判定】",
+        "============================================================",
+    ]
+    for slot_label, rec in slot_items:
+        lines.append(f"■ {slot_label}（{rec.image_filename}）")
+        lines.append(f"判定：{rec.verdict_label}")
+        if rec.reasons:
+            lines.append(f"根拠：{' ／ '.join(rec.reasons)}")
+        if rec.recommend:
+            lines.append(f"- 対象画像ファイル名：{rec.image_filename}")
+            lines.append(f"- Google Flow設定推奨：{rec.settings_recommended}")
+            lines.append("- コピペ用英語プロンプト：")
+            lines.append(rec.english_prompt)
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render a 3-layer 16:9 X clinical diagram card.")
     parser.add_argument("--layout", choices=VALID_LAYOUT_IDS, default=None, help="Force a specific layout_id")

@@ -36,7 +36,10 @@ from typing import Any
 
 from x_card_renderer import (
     VALID_LAYOUT_IDS,
+    GoogleFlowRecommendation,
     build_x_card_spec_from_noon,
+    evaluate_google_flow_recommendation,
+    format_google_flow_section,
     generate_x_card_files,
     get_recent_layout_ids,
 )
@@ -529,6 +532,7 @@ class NoonResult:
     layout_id: str = ""
     palette_id: str = ""
     card_file: str = ""
+    flow_recommendation: GoogleFlowRecommendation | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1992,6 +1996,17 @@ def generate_next_noon_post(
         generate_x_card_files(card_spec, card_html_path, card_png_path, render=render_card)
         rendered_card_path = str(card_png_path)
 
+    noon_image_name = card_png_path.name if card_png_path else "x_card_noon.png"
+    flow_rec = evaluate_google_flow_recommendation(
+        image_filename=noon_image_name,
+        spec=card_spec,
+        title=picked.topic,
+        post_text=post_text,
+        is_paid_article=False,
+        domain=picked.domain,
+        extra_text=picked.summary,
+    )
+
     result = NoonResult(
         candidate=picked,
         post=post_text,
@@ -2002,6 +2017,7 @@ def generate_next_noon_post(
         layout_id=card_spec.layout_id,
         palette_id=card_spec.palette_id,
         card_file=rendered_card_path,
+        flow_recommendation=flow_rec,
     )
     return result, history_state
 
@@ -2029,6 +2045,7 @@ def record_noon_history(
         last_lids.append(result.layout_id)
         history_state["last_layout_ids"] = last_lids[-window:]
 
+    flow_rec = result.flow_recommendation
     history_state.setdefault("history", []).append(
         {
             "date": date_str,
@@ -2043,6 +2060,7 @@ def record_noon_history(
             "reference": cand.reference,
             "layout_id": result.layout_id,
             "palette_id": result.palette_id,
+            "google_flow_recommend": "YES" if (flow_rec and flow_rec.recommend) else "NO",
             "post_preview": result.post,
             "post_file": post_file,
             "card_file": effective_card,

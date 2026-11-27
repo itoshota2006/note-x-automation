@@ -9,6 +9,7 @@ Works in both:
 import argparse
 import json
 import os
+import re
 import shutil
 import smtplib
 import subprocess
@@ -38,7 +39,10 @@ from x_card_renderer import (  # noqa: E402
     LAYOUT_LABELS,
     PALETTES,
     VALID_LAYOUT_IDS,
+    GoogleFlowRecommendation,
     build_x_card_spec_from_article,
+    evaluate_google_flow_recommendation,
+    format_google_flow_section,
     generate_x_card_files,
     get_recent_layout_ids,
 )
@@ -1176,6 +1180,39 @@ def send_email(subject: str, body_path: Path, attachments: list[Path]) -> str:
     return "sent_via_smtp_ssl"
 
 
+def load_paid_article_keys(base_dir: Path) -> set[str]:
+    """Parse past_articles.md summary table and return article keys marked as paid or paid-funnel."""
+    paid_keys: set[str] = set()
+    md_path = base_dir / "past_articles.md"
+    if not md_path.exists():
+        return paid_keys
+    for line in md_path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("|"):
+            continue
+        cols = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cols) < 4:
+            continue
+        key_match = re.search(r"n[0-9a-z]{8,}", cols[1])
+        if not key_match:
+            continue
+        pricing_col = cols[3]
+        if "有料" in pricing_col:
+            paid_keys.add(key_match.group(0))
+    return paid_keys
+
+
+def is_article_paid_or_funnel(art: dict, paid_keys: set[str]) -> bool:
+    if art.get("is_paid"):
+        return True
+    if art.get("key") in paid_keys:
+        return True
+    title = str(art.get("title") or "")
+    post = str(art.get("post") or "")
+    if "有料" in title or "有料" in post or "実践編" in title:
+        return True
+    return False
+
+
 def build_daily_email_body(
     *,
     today_str: str,
@@ -1185,6 +1222,8 @@ def build_daily_email_body(
     noon_result,
     night_card_meta: dict,
     morning_card_meta: dict,
+    night_flow_rec: GoogleFlowRecommendation,
+    morning_flow_rec: GoogleFlowRecommendation,
 ) -> str:
     noon_cand = noon_result.candidate
     noon_wlen = x_weighted_length(noon_result.post)
@@ -1196,6 +1235,22 @@ def build_daily_email_body(
     ref_line = f"参考根拠：{noon_cand.reference}\n" if noon_cand.reference else ""
     noon_layout_label = LAYOUT_LABELS.get(noon_result.layout_id, noon_result.layout_id)
     noon_palette_label = PALETTES.get(noon_result.palette_id, {}).get("label", noon_result.palette_id)
+    noon_flow_rec = noon_result.flow_recommendation or evaluate_google_flow_recommendation(
+        image_filename="x_card_noon.png",
+        spec=None,
+        title=noon_cand.topic,
+        post_text=noon_result.post,
+        is_paid_article=False,
+        domain=noon_cand.domain,
+        extra_text=noon_cand.summary,
+    )
+    flow_section = format_google_flow_section(
+        [
+            ("夜用", night_flow_rec),
+            ("翌朝用", morning_flow_rec),
+            ("翌日 昼用", noon_flow_rec),
+        ]
+    )
 
     return (
         f"毎日19:45 JST 自動生成X投稿まとめ（{today_str} 配信）\n"
@@ -1225,7 +1280,8 @@ def build_daily_email_body(
         f"文字数チェック：X換算 {noon_wlen}/280（全角約 {noon_wlen / 2:.1f} 字）\n"
         f"{reset_notice}"
         "============================================================\n"
-        f"{noon_result.post}\n"
+        f"{noon_result.post}\n\n"
+        f"{flow_section}"
     )
 
 
@@ -1307,7 +1363,10 @@ def main() -> None:
         ("next_morning", tomorrow_str, morning_art, morning_post_path, morning_html_path, morning_png_path),
     ]
 
+    paid_keys = load_paid_article_keys(BASE_DIR)
+
     slot_card_metas: dict[str, dict] = {}
+    slot_flow_recs: dict[str, GoogleFlowRecommendation] = {}
     for slot_name, _date_str, art, post_path, html_path, png_path in slots:
         post_path.write_text(art["post"] + "\n", encoding="utf-8")
         spec = build_x_card_spec_from_article(
@@ -1321,6 +1380,18 @@ def main() -> None:
             render=not args.skip_cards,
         )
         slot_card_metas[slot_name] = meta
+        slot_flow_recs[slot_name] = evaluate_google_flow_recommendation(
+            image_filename=png_path.name,
+            spec=spec,
+            title=art["title"],
+            post_text=art["post"],
+            is_paid_article=is_article_paid_or_funnel(art, paid_keys),
+            domain=art.get("badge", ""),
+            extra_text=" ".join(
+                str(art.get(k, ""))
+                for k in ("header_msg", "box1_title", "box2_title", "mid_text", "steps_title")
+            ),
+        )
         rolling_layouts.append(spec.layout_id)
 
     # Generate Next Noon post + 16:9 standalone clinical pearl card (No URL / No Promotion)
@@ -1335,7 +1406,7 @@ def main() -> None:
     )
     noon_post_path.write_text(noon_result.post + "\n", encoding="utf-8")
 
-    # Build combined daily email body containing 夜用 + 翌朝用 + 【翌日 昼用（リンクなし・臨床知見）】
+    # Build combined daily email body containing 夜用 + 翌朝用 + 【翌日 昼用（リンクなし・臨床知見）】 + Google Flow動画化判定
     email_subject = f"【X投稿用・夜／翌朝／翌日昼】自動生成ポスト＆図解カード（{today_str}）"
     email_body = build_daily_email_body(
         today_str=today_str,
@@ -1345,6 +1416,8 @@ def main() -> None:
         noon_result=noon_result,
         night_card_meta=slot_card_metas["evening"],
         morning_card_meta=slot_card_metas["next_morning"],
+        night_flow_rec=slot_flow_recs["evening"],
+        morning_flow_rec=slot_flow_recs["next_morning"],
     )
     daily_mail_path.write_text(email_body, encoding="utf-8")
 
@@ -1379,6 +1452,7 @@ def main() -> None:
     last_rot_layouts = [x for x in state.get("last_layout_ids", []) if x in VALID_LAYOUT_IDS]
     for slot_name, date_str, art, post_path, _html_path, png_path in slots:
         meta = slot_card_metas[slot_name]
+        flow_rec = slot_flow_recs[slot_name]
         last_rot_layouts.append(meta["layout_id"])
         state.setdefault("history", []).append(
             {
@@ -1389,6 +1463,7 @@ def main() -> None:
                 "url": art["url"],
                 "layout_id": meta["layout_id"],
                 "palette_id": meta["palette_id"],
+                "google_flow_recommend": "YES" if flow_rec.recommend else "NO",
                 "post_file": str(post_path),
                 "card_file": str(png_path),
                 "email_sent": True,

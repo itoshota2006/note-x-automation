@@ -262,14 +262,26 @@
        - **評価・臨床推論：** スレートグレー × シアン
      - **レイアウト重複回避の履歴管理：**
        - `x_rotation_state.json`（朝夜）および `x_noon_history.json`（昼）に、使用したレイアウトID（例：`"layout_id": "layout_flow"`）と配色ID（`"palette_id"`）を必ず記録し、**直近1〜2回の投稿と同じレイアウトが連続しないように制御**すること。
+   - **【Google Flow動画化判定＆コピペ用プロンプト出力ルール】**
+     - 毎回送信するX投稿案の通知メールおよびローカル出力（`x_mail_daily.txt`）の末尾に、夜用・翌朝用・翌日昼用の各図解カード（16:9 PNG）ごとの **「Google Flow動画化判定」** セクションを必ず追加する。
+     - **判定基準（以下のいずれかに該当する場合は `🎬 動画化おすすめ：YES（優先度：高）`、それ以外は `NO（静止画推奨）` と出力する）：**
+       1. 有料note記事（または有料エリアへの誘導が目的のメイン記事）
+       2. 関節運動・筋収縮・重心移動・床反力ベクトル（→）など、空間的・時間的な「動きや変化」が理解の鍵になる運動器テーマ
+       3. 3層図解（×・◎・→）で因果関係やビフォーアフターの比較を見せたい図解
+     - **YESの場合に出力する項目（メール本文末尾に、スマホやPCからそのままコピペできる形で出力）：**
+       - 対象画像ファイル名：（生成された16:9 PNGのファイル名。例：`x_card_night.png` / `x_card_morning.png` / `x_card_noon.png`）
+       - Google Flow設定推奨：`Veo 3.1 Lite / 720p / 8秒 / 同時生成x1（10クレジット）`
+       - コピペ用英語プロンプト（1文〜2文）：
+         - 開始フレーム（Start Frame）に図解画像を読み込ませる前提（Image-to-Video）のため、画像の説明は書かず **「動きの指示」だけ** を書くこと。
+         - 日本語テキストが崩れないよう、必ず末尾に `Keep all text sharp, static, and completely readable. No dialogue. No music.` を含めること。
    - **毎日19:45（JST）1回実行・夜／翌朝／翌日昼まとめ生成＆Gmail送信フロー：**
      1. **2記事＋昼1知見のローテーション選定:** 1回の実行につき、`past_articles.md`・`x_rotation_state.json`・`x_noon_history.json` を照合し、重複しない異なる公開済み記事を2本（今夜用・翌朝用）と、リンクなし臨床知見1本（翌日昼用）を選定する。あわせて直近1〜2回の `layout_id` を参照し、連続重複しないレイアウトを各スロットへ割り当てる。
      2. **今夜用・翌朝用・翌日昼用の素材生成:** 上記ルール（16:9・1200×675px・5レイアウト×3配色・見出し＋短フレーズ3〜4個）に従い、以下を生成・保存する。
         - **今夜用:** `x_post_night.txt` と `x_card_night.png`（HTMLソース：`x_card_night.html`）
         - **翌朝用:** `x_post_morning.txt` と `x_card_morning.png`（HTMLソース：`x_card_morning.html`）
         - **翌日昼用（リンクなし・臨床知見）:** `x_post_noon.txt` と `x_card_noon.png`（HTMLソース：`x_card_noon.html`）
-     3. **Gmail（`itoshota2006@gmail.com`）への送信:** `run_daily_x.py` 実行時に日次まとめメール（添付：`x_card_night.png`・`x_card_morning.png`・`x_card_noon.png`）またはスロット別メールとして送信する（無人自動実行モード `AGY_UNATTENDED` で `send-with-attachment` が制限される場合は `gmail mutate create-draft` で下書きを作成する）。
-     4. **ローテーション履歴の更新:** 送信完了後、`x_rotation_state.json` に今夜分（`slot: "evening"`）と翌朝分（`slot: "next_morning"`）、`x_noon_history.json` に翌日昼分（`slot: "next_noon"`）を追記し、全エントリに `"layout_id"` と `"palette_id"` を記録する。
+     3. **Gmail（`itoshota2006@gmail.com`）への送信およびローカル出力（`x_mail_daily.txt`）:** `run_daily_x.py` 実行時に日次まとめメール本文（末尾に上記「Google Flow動画化判定」セクションを必ず含む）を `x_mail_daily.txt` に保存し、添付：`x_card_night.png`・`x_card_morning.png`・`x_card_noon.png` とともに送信する（無人自動実行モード `AGY_UNATTENDED` で `send-with-attachment` が制限される場合は `gmail mutate create-draft` で下書きを作成する）。
+     4. **ローテーション履歴の更新:** 送信完了後、`x_rotation_state.json` に今夜分（`slot: "evening"`）と翌朝分（`slot: "next_morning"`）、`x_noon_history.json` に翌日昼分（`slot: "next_noon"`）を追記し、全エントリに `"layout_id"`・`"palette_id"`・`"google_flow_recommend"` を記録する。
 
 ## 6．note自動下書きルール（毎日19:30実行｜GitHub `itoshota2006/note-x-automation` の `note-themes.txt` 連携）
 1. **GitHub上の `note-themes.txt` の取得・読み取り:**
