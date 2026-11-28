@@ -1,54 +1,56 @@
-毎日19:45 JST 自動生成X投稿まとめ（2026-11-27 配信）
+毎日19:45 JST 自動生成X投稿まとめ（2026-11-28 配信）
 ※今夜用・翌朝用・翌日昼用の16:9（1200×675px）図解カードPNG 3枚を添付しています。
 ※翌日昼用はURL・note誘導なしのX単体完結ポスト＆図解です。
 
 ============================================================
-【夜用】（2026-11-27 夜｜添付図解：x_card_night.png）
-対象記事：起立動作における骨盤動態の評価｜前傾・前方移動・左右偏位から考える臨床推論
-図解レイアウト：layout_hero（結論＋3根拠カード型）
-図解配色：運動器・バイオメカニクス（ネイビー×オレンジ）
+【夜用】（2026-11-28 夜｜添付図解：x_card_night.png）
+対象記事：運動療法と栄養：運動負荷と栄養状態をどう考える？｜理学療法士のための評価と臨床判断
+図解レイアウト：layout_matrix（対比型（× vs ◎））
+図解配色：評価・臨床推論（スレートグレー×シアン）
 ============================================================
-起立動作（立ち上がり）の観察で「骨盤前傾」と「骨盤前方移動」を混同していませんか？
-実はこの2つは別の運動であり、股関節・腰椎・足関節との運動連鎖と3方向観察で整理すると失敗原因が一目で分かります。
+栄養状態が低下している患者さんに、通常通りの高負荷筋トレを行っていませんか？
+「低栄養・サルコペニア・フレイル」の違いと、MNA-SF/MUST/GLIMを踏まえた運動負荷の調整基準を整理しました。
 明日の臨床で迷わないための具体策はこちら👇
-https://note.com/benita_pt/n/nea41e4ec71d3
+https://note.com/benita_pt/n/n36d525b76c75
 
 ============================================================
-【翌朝用】（2026-11-28 朝｜添付図解：x_card_morning.png）
-対象記事：起立動作の問題をどう改善する？｜評価結果から選択する具体的な治療アプローチと再評価
+【翌朝用】（2026-11-29 朝｜添付図解：x_card_morning.png）
+対象記事：【実践編】大腿骨頸部骨折術後の評価結果をどう読む？TUGの動作観察から運動療法・再評価まで
 図解レイアウト：layout_flow（3ステップ・フロー型）
 図解配色：運動器・バイオメカニクス（ネイビー×オレンジ）
 ============================================================
-立ち上がりが難しい患者さんに、ただ「立ち座り練習の反復」だけを行っていませんか？
-骨盤前傾不足・前方移動不足・背屈制限・離殿後停止・左右非対称のパターン別に、具体的な治療選択と5症例を解説した実践編です。
+大腿骨頸部骨折術後で「TUGが遅い＝下肢筋トレ」と短絡的にプログラムを組んでいませんか？
+TUGの動作観察と複数評価を統合し、3つの症例（立ち上がり・方向転換・疼痛/恐怖心）から介入と再評価を解説した実践編です。
 明日の臨床で迷わないための具体策はこちら👇
-https://note.com/benita_pt/n/n197f06a537c9
+https://note.com/benita_pt/n/ndf9668ff07c2
 
 ============================================================
-【翌日 昼用（リンクなし・臨床知見）】（2026-11-28 昼｜添付図解：x_card_noon.png｜URL・宣伝なし・X単体完結）
-抽出元：NotebookLM 記事関連文献からの別角度臨床ポイント（knowledge/nlm_exported_kb.md）（1周目 / source_id: f47d985e-cdde-4364-a871-e129eb020265__spinoff）
-トピック：術後早期のTUG測定不能を予後不良と判断しない評価の視点
-図解レイアウト：layout_timeline（タイムライン・段階進行型）
+【翌日 昼用（リンクなし・臨床知見）】（2026-11-29 昼｜添付図解：x_card_noon.png｜URL・宣伝なし・X単体完結）
+抽出元：リポジトリ内ナレッジベース（knowledge/）（1周目 / source_id: kb-pfps-hip-knee）
+トピック：膝蓋大腿関節痛における股関節外転・外旋筋強化の併用効果
+図解レイアウト：layout_grid（3段・構造整理型）
 図解配色：運動器・バイオメカニクス（ネイビー×オレンジ）
-参考根拠：高齢者の大腿骨転子部骨折術後理学療法：根拠・評価・臨床応用.pdf
-文字数チェック：X換算 228/280（全角約 114.0 字）
+参考根拠：Willy et al., JOSPT CPG 2019 (Patellofemoral Pain)
+文字数チェック：X換算 269/280（全角約 134.5 字）
 ============================================================
-術後5日目のTUGは床効果が高く合格率は38%にとどまりますが、早期に実施不能だった方の38%が1年後には合格レベルへ回復します。術直後の測定不能を長期的な歩行自立困難と同一視せず、急性期はCASなどの基本移動尺度で経過を追う視点が重要です。
+膝前面痛（PFPS）に大腿四頭筋トレだけで変化が乏しい時は、股関節の評価が抜けていないかという視点が重要になります。
+JOSPTガイドラインでも膝単独より「股関節外転・外旋＋膝」の併用強化が早期の除痛・機能改善に推奨されています。
+ステップダウンでの動的ニーイン観察が第一歩です。
 
 ============================================================
 【Google Flow動画化判定】
 ============================================================
 ■ 夜用（x_card_night.png）
 判定：🎬 動画化おすすめ：YES（優先度：高）
-根拠：関節運動・筋収縮・重心移動など動きや変化が鍵の運動器テーマ
+根拠：関節運動・筋収縮・重心移動など動きや変化が鍵の運動器テーマ ／ 3層図解（×・◎・→）で因果関係・ビフォーアフター比較を提示
 - 対象画像ファイル名：x_card_night.png
 - Google Flow設定推奨：Veo 3.1 Lite / 720p / 8秒 / 同時生成x1（10クレジット）
 - コピペ用英語プロンプト：
-Subtle locked-off editorial motion graphics animation: gently highlight the top banner, then softly illuminate the three cards one by one from left to right with subtle border glows, finishing with a smooth shimmer across the bottom bar. Keep all text sharp, static, and completely readable. No dialogue. No music.
+Subtle locked-off motion graphics animation: gently pulse the left incorrect markers, smoothly animate the directional arrows flowing left to right to illuminate the right clinical panels in sequence, and finish with a soft light sweep across the bottom bar. Keep all text sharp, static, and completely readable. No dialogue. No music.
 
 ■ 翌朝用（x_card_morning.png）
 判定：🎬 動画化おすすめ：YES（優先度：高）
-根拠：有料note記事（または有料エリア誘導メイン記事） ／ 関節運動・筋収縮・重心移動など動きや変化が鍵の運動器テーマ
+根拠：有料note記事（または有料エリア誘導メイン記事） ／ 関節運動・筋収縮・重心移動など動きや変化が鍵の運動器テーマ ／ 3層図解（×・◎・→）で因果関係・ビフォーアフター比較を提示
 - 対象画像ファイル名：x_card_morning.png
 - Google Flow設定推奨：Veo 3.1 Lite / 720p / 8秒 / 同時生成x1（10クレジット）
 - コピペ用英語プロンプト：
@@ -60,4 +62,4 @@ Smooth locked-off sequential motion graphics animation: gently illuminate each n
 - 対象画像ファイル名：x_card_noon.png
 - Google Flow設定推奨：Veo 3.1 Lite / 720p / 8秒 / 同時生成x1（10クレジット）
 - コピペ用英語プロンプト：
-Smooth locked-off sequential motion graphics animation: gently illuminate each numbered stage from left to right as subtle directional light pulses travel along the connecting arrows, ending with a soft highlight sweep across the bottom bar. Keep all text sharp, static, and completely readable. No dialogue. No music.
+Gentle locked-off row-by-row motion graphics animation: subtly illuminate each row from top to bottom as soft light pulses glide left to right along the directional arrows, ending with a calm glow along the bottom bar. Keep all text sharp, static, and completely readable. No dialogue. No music.

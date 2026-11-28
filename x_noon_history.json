@@ -4,22 +4,24 @@
   "cycle": 1,
   "layout_rotation_window": 2,
   "last_layout_ids": [
-    "layout_matrix",
-    "layout_timeline"
+    "layout_timeline",
+    "layout_grid"
   ],
   "used_source_ids": [
     "75a47cd1-7184-4cc2-903b-b48aea68146d__spinoff",
     "kb-ankle-cai-wblt",
     "kb-frozen-shoulder-irritability",
     "kb-rcrsp-ssmp",
-    "f47d985e-cdde-4364-a871-e129eb020265__spinoff"
+    "f47d985e-cdde-4364-a871-e129eb020265__spinoff",
+    "kb-pfps-hip-knee"
   ],
   "used_topics": [
     "歩行テストにおける測定条件と中止基準の統一",
     "足関節外側靭帯損傷後の背屈制限とWBLT評価",
     "凍結肩の刺激性（Irritability）分類に基づくROM負荷調整",
     "腱板関連肩痛の症状修正手技（SSMP）による負荷応答評価",
-    "術後早期のTUG測定不能を予後不良と判断しない評価の視点"
+    "術後早期のTUG測定不能を予後不良と判断しない評価の視点",
+    "膝蓋大腿関節痛における股関節外転・外旋筋強化の併用効果"
   ],
   "excluded_source_ids": [
     "51bf022c-b737-4f62-9a05-8d136d1f4110",
@@ -128,8 +130,28 @@
       "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_noon.png",
       "email_sent": true,
       "delivery_mode": "sent_via_smtp_ssl"
+    },
+    {
+      "date": "2026-11-29",
+      "slot": "next_noon",
+      "cycle": 1,
+      "source_id": "kb-pfps-hip-knee",
+      "source_origin": "knowledge_base",
+      "generation_method": "knowledge_base_curated",
+      "notebook_id": null,
+      "topic": "膝蓋大腿関節痛における股関節外転・外旋筋強化の併用効果",
+      "domain": "運動器・膝関節",
+      "reference": "Willy et al., JOSPT CPG 2019 (Patellofemoral Pain)",
+      "layout_id": "layout_grid",
+      "palette_id": "musculoskeletal",
+      "google_flow_recommend": "YES",
+      "post_preview": "膝前面痛（PFPS）に大腿四頭筋トレだけで変化が乏しい時は、股関節の評価が抜けていないかという視点が重要になります。\nJOSPTガイドラインでも膝単独より「股関節外転・外旋＋膝」の併用強化が早期の除痛・機能改善に推奨されています。\nステップダウンでの動的ニーイン観察が第一歩です。",
+      "post_file": "/home/runner/work/note-x-automation/note-x-automation/x_post_noon.txt",
+      "card_file": "/home/runner/work/note-x-automation/note-x-automation/x_card_noon.png",
+      "email_sent": true,
+      "delivery_mode": "sent_via_smtp_ssl"
     }
   ],
   "reset_log": [],
-  "last_updated_jst": "2026-11-27T20:34:22+09:00"
+  "last_updated_jst": "2026-11-28T20:30:51+09:00"
 }
